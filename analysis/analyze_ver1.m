@@ -43,6 +43,10 @@
 % ------------------------------------------------------------------------
 % After filling in the above parameters for each dataset,
 % run the script to process all experiments listed below.
+% ------------------------------------------------------------------------
+% Some naming convention is hard coded, for example this needs to be
+% modified to be used on I80 data, as the tile number in the file name is
+% padded to 4 digits
 % ========================================================================
 
 gamma = -15;
