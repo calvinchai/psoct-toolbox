@@ -9,8 +9,8 @@ parpool_num = 24;
 
 basename1 = basename;
 basename2 = basename1;
-slice_numbers = [10,11];
-
+% slice_numbers = [10,11];
+slice_numbers = [1]
 disp('start parpool');
 % poolobj = parpool(parpool_num);
 disp('parpool started');
@@ -21,10 +21,12 @@ for slice = slice_numbers
     
     fixed1 = imread([basename1, 'mosaic_',sprintf('%03d',slice_id1),'_ori.tif']); % orientation fixed
     moving1 = imread([basename2, 'mosaic_',sprintf('%03d',slice_id2),'_ori.tif']);  % orientation moving
-
+    
     fixed2 = imread([basename1,'mosaic_',sprintf('%03d',slice_id1),'_biref.tif']);
     moving2 = imread([basename2, 'mosaic_',sprintf('%03d',slice_id2),'_biref.tif']);
-    
+    % TODO: the following is used for exp3. We can remove them after
+    % fixed1 = fixed1(:,1:1111);
+    % fixed2 = fixed2(:,1:1111);
     fixed2 = imgaussfilt(fixed2,3);
     moving2 = imgaussfilt(moving2,3);
     
@@ -71,6 +73,8 @@ for slice = slice_numbers
 %
     moving_o1 = -moving1;
     moving_bi1 = moving2;
+    moving_bi1(~isfinite(moving_bi1)) = 1e-9;
+    fixed_bi1(~isfinite(fixed_bi1)) = 1e-9;
     %   figure, subplot(1,2,1);imagesc(fixed_bi1);subplot(1,2,2);imagesc(moving_bi1)
 
 %     fixed_o1 = imresize (fixed_o1, [size(fixed_bi1,1) size(fixed_bi1,2)],'nearest');

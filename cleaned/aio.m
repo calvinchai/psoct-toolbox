@@ -222,3 +222,205 @@ stitch_section_modalities(basename, [28 21; 48 21], 'Mosaics', {'mosaic_021','mo
 thruplane(basename, gamma)
 RGB_3Daxis(basename)
 
+%% 
+source = '//local_mount/space/megaera/3/users/linc/000052/tile_data/';
+basename = '/homes/5/kc1708/project/psoct-analysis/I80_11-61/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 60, "new")
+stitch_section_modalities(basename, [28 21; 48 21], 'Mosaics', {'mosaic_019','mosaic_020'})
+stitch_section_modalities(basename, [28 21; 48 21], 'Mosaics', {'mosaic_021','mosaic_022'})
+% stitch_section(basename, [5 6], [8 6])
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+%% New Birefringence
+source = '/vast/fiber/projects/20250919_CCtest/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP1-diffBiref2/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 80, "", "diff")
+
+stitch_section(basename, [5 6], [8 6])
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+% 
+% source = '/vast/fiber/projects/20250919_CCtest2_15degree/';
+% basename = '/homes/5/kc1708/project/psoct-analysis/EXP2-diffBiref2/';
+% gamma = -15;
+% batch_process_cc(source, [basename 'processed/'], 80,"", "diff")
+% stitch_section(basename, [7 6], [5 6])
+% thruplane(basename, gamma)
+% RGB_3Daxis(basename)
+%% 
+source = '/vast/fiber/projects/20250919_CCtest/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP1-fft/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 100, "new", "fft")
+
+stitch_section(basename, [5 6], [8 6])
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+
+source = '/vast/fiber/projects/20250919_CCtest2_15degree/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP2-fft/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 80,"new", "fft")
+stitch_section(basename, [7 6], [5 6])
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+
+%% 
+source = '/vast/fiber/projects/20250919_CCtest/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP1_11-90-unwrap-oldfitting/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 80, "new", "unwrap_old")
+stitch_section(basename, [5 6], [8 6])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+source = '/vast/fiber/projects/20250919_CCtest2_15degree/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP2_11-90-unwrap-oldfitting/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 80, "new", "unwrap_old")
+stitch_section(basename, [7 6], [5 6])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+
+%% 
+source = '/vast/fiber/projects/20250919_CCtest/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP1_11-90-unwrap-newfitting/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 80, "new", "unwrap_new")
+stitch_section(basename, [5 6], [8 6])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+source = '/vast/fiber/projects/20250919_CCtest2_15degree/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP2_11-90-unwrap-newfitting/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 80, "new", "unwrap_new")
+stitch_section(basename, [7 6], [5 6])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+
+%% 
+source = '/vast/fiber/projects/20250919_CCtest/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP1_11-90-unwrap-exp/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 80, "new", "exp")
+stitch_section(basename, [5 6], [8 6])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+source = '/vast/fiber/projects/20250919_CCtest2_15degree/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP2_11-90-unwrap-exp/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 80, "new", "exp")
+stitch_section(basename, [7 6], [5 6])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+
+%% 
+source = '/vast/fiber/projects/20250920_CCtest3_15degrees_CCW/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP3_11-90-unwrap-oldfitting/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 80, "new", "unwrap_old")
+stitch_section(basename, [9 5], [13 5])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+%% 
+
+source = '/vast/fiber/projects/20250920_CCtest4_30degrees_CW/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP4_11-90-unwrap-oldfitting/';
+gamma = -15;
+% batch_process_cc(source, [basename 'processed/'], 80, "new", "unwrap_old")
+% stitch_section(basename, [13 5], [9 5])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+%% 
+
+source = '/vast/fiber/projects/20250920_CCtest3_15degrees_CCW/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP3_11-90-unwrap-exp/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 80, "new", "exp")
+stitch_section(basename, [9 5], [13 5])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+%% 
+
+source = '/vast/fiber/projects/20250920_CCtest4_30degrees_CW/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP4_11-90-unwrap-exp/';
+gamma = -15;
+% batch_process_cc(source, [basename 'processed/'], 80, "new", "exp")
+stitch_section(basename, [13 5], [9 5])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+%% 
+
+source = '/vast/fiber/projects/20250920_CCtest4_30degrees_CW/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP4_11-90-unwrap-oldfitting/';
+gamma = -15;
+% batch_process_cc(source, [basename 'processed/'], 80, "new", "unwrap_old")
+% stitch_section(basename, [13 5], [9 5])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+source = '/vast/fiber/projects/20250920_CCtest4_30degrees_CW/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP4_11-90-unwrap-exp/';
+gamma = -15;
+% batch_process_cc(source, [basename 'processed/'], 80, "new", "exp")
+% stitch_section(basename, [13 5], [9 5])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+
+%% 
+
+
+source = '/vast/fiber/projects/20250920_CCtest4_30degrees_CW/';
+basename = '/autofs/space/megaera_001/users/kchai/project/psoct-analysis/EXP4_11-90/untitled folder/';
+gamma = -15;
+% batch_process_cc(source, [basename 'processed/'], 80, "new", "exp")
+% stitch_section(basename, [13 5], [9 5])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+%% 
+source = '/vast/fiber/projects/20250919_CCtest/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP1_11-90-unwrap-exp2/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 80, "new", "exp2")
+stitch_section(basename, [5 6], [8 6])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+source = '/vast/fiber/projects/20250919_CCtest2_15degree/';
+basename = '/homes/5/kc1708/project/psoct-analysis/EXP2_11-90-unwrap-exp2/';
+gamma = -15;
+batch_process_cc(source, [basename 'processed/'], 80, "new", "exp2")
+stitch_section(basename, [7 6], [5 6])
+
+thruplane(basename, gamma)
+RGB_3Daxis(basename)
+
+
