@@ -1,19 +1,14 @@
 
-function thruplane(basename, gamma)
+function thruplane(basename, gamma, slice_numbers)
 %gamma = -10
 
 addpath ('/autofs/cluster/octdata2/users/Chao/code/demon_registration_version_8f');
 addpath('/autofs/cluster/octdata2/users/Chao/code/telesto');
 addpath ('/space/omega/1/users/3d_axis/PAPER/scripts');
-parpool_num = 24;
 
 basename1 = basename;
 basename2 = basename1;
-% slice_numbers = [10,11];
-slice_numbers = [1]
-disp('start parpool');
-% poolobj = parpool(parpool_num);
-disp('parpool started');
+
 for slice = slice_numbers
     % % read first set
     slice_id1 = slice*2-1;
@@ -84,7 +79,7 @@ for slice = slice_numbers
 
 
 
-    thruplane_reg_optiz_tensor_XY_final_par(fixed_bi1,moving_bi1, fixed_o1, moving_o1, gamma, [basename 'par_slice' num2str(slice)],parpool_num)
+    thruplane_reg_optiz_tensor_XY_final_par(fixed_bi1,moving_bi1, fixed_o1, moving_o1, gamma, [basename 'par_slice' num2str(slice)])
 
 clear fixed_bi1 moving_bi1 fixed_o1 moving_o1
 % delete(poolobj)

@@ -1,29 +1,21 @@
-function batch_process_cc(inDir, outDir,depth, varargin)
+function batch_process_cc(inDir, outDir,surface, depth, varargin)
 % Batch-process complex PS-OCT volumes to orientation & birefringence NIfTIs (parallel).
 
-if nargin <4
+if nargin <5
     oriMethod = "";
 else
     oriMethod = varargin{1}; % "" or "new"
 end
-if nargin <5
+if nargin <6
     birefMethod = "";
 else
     birefMethod = varargin{2}; % "" or "new"
 end
-if nargin < 6
-    unwrap = false;
-else
-    unwrap = varargin{3}; % true or false
-end
 
-%inDir  = "/vast/fiber/projects/20250920_CCtest4_30degrees_CW/";
-%outDir = "/local_mount/space/megaera/1/users/kchai/project/NewBiref_20250920_CCtest4_30degrees_CW/processed/";
 
 addpath('/local_mount/space/megaera/1/users/kchai/code/psoct-data-processing/vol_recon/');
 % ---- Parameters ----
           % If you have per-volume surfaces, make this dynamic per file.
-% depth       = 100;          % pixels below surface (depth_lin_ret)
 lambda_um   = 0.0013;
 zSize_um = 2.5;
 
@@ -74,8 +66,6 @@ for k = 1:N
     outR3D(k)   = fullfile(outDir, sprintf("mosaic_%s_image_%s_processed_R3D.nii",   mosaicStr, imageStr));
     outOri(k)   = fullfile(outDir, sprintf("mosaic_%s_image_%s_processed_ori.nii",   mosaicStr, imageStr));
     outBiref(k) = fullfile(outDir, sprintf("mosaic_%s_image_%s_processed_biref.nii", mosaicStr, imageStr));
-    outOriNew(k)   = fullfile(outDir, sprintf("mosaic_%s_image_%s_processed_oriNew.nii",   mosaicStr, imageStr));
-    outBirefNew(k) = fullfile(outDir, sprintf("mosaic_%s_image_%s_processed_birefNew.nii", mosaicStr, imageStr));
 end
 
 % Remove any empties from bad names
@@ -88,14 +78,15 @@ N = numel(inPaths);
 fprintf("Processing %d files in parallel...\n", N);
 
 % ---- Parallel loop ----
-parfor k = 1:N
+for k = 1:N
 % parfor k = 1105:1115
 % for k = 200:201
     inPath = inPaths(k);
     % surfaceFile = replace(inPath,'cropped', 'surface_finding')
     % Only produce ori + biref; skip others by passing ""
     aip=outAIP(k); 
-    mip=""; ret="";
+    mip=""; 
+    ret="";
     dBI3D = "";
     O3D = "";
     R3D = "";
@@ -106,18 +97,20 @@ parfor k = 1:N
     end
     ori ="";
     biref = "";
-    oriNew = "";
-    birefNew = "";
     ori = outOri(k);
     biref = outBiref(k);
     % dBI3D=outdBI(k);
-    %oriNew = outOriNew(k);
-    birefNew = outBirefNew(k);
     Complex2Processed( ...
-        inPath, surfaceFile(k), depth, zSize_um, ...
+        inPath, 11, ...
+        depth, zSize_um, ...
         aip, mip, ret, ori, biref,...
-        O3D, R3D, dBI3D, oriMethod, birefMethod, unwrap, ...
+        O3D, R3D, dBI3D, oriMethod, birefMethod, ...
         "WavelengthUm", lambda_um);
+    % Complex2Processed( ...
+    %     inPath, surfaceFile(k), depth, zSize_um, ...
+    %     aip, mip, ret, ori, biref,...
+    %     O3D, R3D, dBI3D, oriMethod, birefMethod, ...
+    %     "WavelengthUm", lambda_um);
 
     fprintf("[OK] %s\n", inPath);
 
