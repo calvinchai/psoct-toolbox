@@ -150,7 +150,7 @@ Jstack_all = cat(1, J1_split, J2_split);
 
 
 fprintf('Saving output to: %s\n', output_file);
-
+Jstack_all = flip(Jstack_all,3);
 niftiwrite(single(Jstack_all),output_file);
 
 

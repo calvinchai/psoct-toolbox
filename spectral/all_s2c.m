@@ -1,4 +1,4 @@
-function batch_run_s2c(base_dir, output_dir, pattern1, pattern2)
+function all_s2c(base_dir, output_dir, pattern1, pattern2)
 % BATCH_RUN_S2C Batch-launch s2c over mosaic files in parallel.
 %
 % Usage: 
