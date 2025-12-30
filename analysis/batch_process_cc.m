@@ -66,6 +66,7 @@ for k = 1:N
     outR3D(k)   = fullfile(outDir, sprintf("mosaic_%s_image_%s_processed_R3D.nii",   mosaicStr, imageStr));
     outOri(k)   = fullfile(outDir, sprintf("mosaic_%s_image_%s_processed_ori.nii",   mosaicStr, imageStr));
     outBiref(k) = fullfile(outDir, sprintf("mosaic_%s_image_%s_processed_biref.nii", mosaicStr, imageStr));
+    outRet(k) =  fullfile(outDir, sprintf("mosaic_%s_image_%s_processed_ret.nii", mosaicStr, imageStr));
 end
 
 % Remove any empties from bad names
@@ -78,9 +79,10 @@ N = numel(inPaths);
 fprintf("Processing %d files in parallel...\n", N);
 
 % ---- Parallel loop ----
-for k = 1:N
-% parfor k = 1105:1115
-% for k = 200:201
+parfor k = 1:N
+% parfor k = 1:2
+% for k=634:N
+% for k = 50:51
     inPath = inPaths(k);
     % surfaceFile = replace(inPath,'cropped', 'surface_finding')
     % Only produce ori + biref; skip others by passing ""
@@ -90,22 +92,27 @@ for k = 1:N
     dBI3D = "";
     O3D = "";
     R3D = "";
-    if (k>272&&k<282) || (k>1105&&k<1115)
-        dBI3D=outdBI(k);
-        O3D=outO3D(k); 
-        R3D=outR3D(k);
-    end
     ori ="";
     biref = "";
     ori = outOri(k);
     biref = outBiref(k);
+    ret = outRet(k);
     % dBI3D=outdBI(k);
+    % O3D=outO3D(k); 
+    % R3D=outR3D(k);
+    % if isfile(biref)
+    %     continue
+    % end
+    try
     Complex2Processed( ...
-        inPath, 11, ...
+        inPath, surface, ...
         depth, zSize_um, ...
         aip, mip, ret, ori, biref,...
         O3D, R3D, dBI3D, oriMethod, birefMethod, ...
         "WavelengthUm", lambda_um);
+     catch 
+        fprintf("[FAIL] %s\n", inPath);
+    end
     % Complex2Processed( ...
     %     inPath, surfaceFile(k), depth, zSize_um, ...
     %     aip, mip, ret, ori, biref,...
