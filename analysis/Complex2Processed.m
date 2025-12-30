@@ -1,5 +1,5 @@
 
-function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, biref, O3D, R3D, dBI3D, oriMethod, birefMethod,varargin)
+function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, biref, O3D, R3D, dBI3D, surfOut, oriMethod, birefMethod,varargin)
 % Complex2Processed
 % Compute 3D metrics (dBI3D, R3D, O3D) and optional enface 2D maps (AIP, MIP, RET, ORI),
 % plus optional birefringence from a single complex PS-OCT NIfTI volume.    
@@ -38,6 +38,7 @@ function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, bir
         O3D string = ""
         R3D string = ""
         dBI3D string = ""
+        surfOut string = ""
         oriMethod string = ""
         birefMethod string = ""
     end
@@ -53,7 +54,7 @@ function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, bir
     % -------- Load input complex NIfTI --------
     infoIn = niftiinfo(input);
     V = niftiread(infoIn);               % single or double; dimensions: (4*X) × Y × Z
-   
+    V = decode_fp16_uint16(V);
     %%
     % V = single(V);                       % enforce single precision downstream  
     %%
@@ -82,18 +83,20 @@ function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, bir
 
     phase1 = angle(J1);
     phase2 = angle(J2);
-    phi = (phase1 - phase2);                       % wrap to [-pi,pi]
+    % phi = (phase1 - phase2)+45/180*pi*2;                       % wrap to [-pi,pi]
+    phi = phase2-phase1 ;%+ 45/180*pi*2;                       
     phi(phi >  pi) = phi(phi >  pi) - 2*pi;
     phi(phi < -pi) = phi(phi < -pi) + 2*pi;
     O3D_vol = flip((phi/(2*pi))*180,3);         % degrees, nominally [-90,90]
 
     surf = zeros(nx, ny);  % Output surface map
-
+    % dBI3D_vol = flip(dBI3D_vol,3);
+    % O3D_vol = flip(O3D_vol,3);
+    % R3D_vol = flip(R3D_vol,3);
     if isnumeric(surface) && mod(surface,1) == 0
         surf = surf+ surface;
     elseif isstring(surface)
         if surface == "find"
-    
             w = 5;
             w2 = 5;
             kernel = [-ones(1, w)/w, ones(1, w2)/w2];  % Gradient kernel
@@ -101,32 +104,57 @@ function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, bir
             for i = 1:nx
                 for j = 1:ny
                     line = squeeze(inten(i, j, :) );
+                    % line = line(end:-1:1);
                     % line = imgaussfilt( squeeze(inten(i, j, :) ) ,5);
                     valid_len = sum(line > 0.01);
-                    norm_profile = squeeze(norms(i, j, 1:min(20, end)));  % match [:10] behavior
-        
-                    if mean(norm_profile(:)) > 0.5
-                        surf(i, j) = 1;  % override surface
-                    elseif (mean(line(1:min(10, end))) > prctile(line,80)) & mean(norm_profile(:)) > 0.30
-                        surf(i, j) = 1;  % override surface
-                    elseif valid_len > w + w2
+                    if valid_len > w + w2
                         data = imgaussfilt(line(1:valid_len), 5);  % 1D Gaussian smoothing
                         grad = -conv(data, kernel, 'valid');
                         positions = (w+1):(valid_len-w+1);
                         [grad_min, idx_min] = max(grad);
                         i_min = positions(idx_min);
-                        surf(i,j) = i_min;
+                        surf(i,j) = i_min+10;
                     else
-                        surf(i, j) = 1;
+                        surf(i, j) = 11;
                     end
                 end
             end
         
             % Median filtering of surface map
             surf = medfilt2(surf, [3, 3],'symmetric');
-        
-            outliers = isoutlier(surf);
-            surf( outliers ) = int32(mean( surf(~outliers) ));
+            % w = 5;
+            % w2 = 5;
+            % kernel = [-ones(1, w)/w, ones(1, w2)/w2];  % Gradient kernel
+            % 
+            % for i = 1:nx
+            %     for j = 1:ny
+            %         line = squeeze(inten(i, j, :) );
+            %         % line = imgaussfilt( squeeze(inten(i, j, :) ) ,5);
+            %         valid_len = sum(line > 0.01);
+            %         norm_profile = squeeze(norms(i, j, 1:min(20, end)));  % match [:10] behavior
+            % 
+            %         if mean(norm_profile(:)) > 0.5
+            %             surf(i, j) = 1;  % override surface
+            %         elseif (mean(line(1:min(10, end))) > prctile(line,80)) & mean(norm_profile(:)) > 0.30
+            %             surf(i, j) = 1;  % override surface
+            %         elseif valid_len > w + w2
+            %             data = imgaussfilt(line(1:valid_len), 5);  % 1D Gaussian smoothing
+            %             grad = -conv(data, kernel, 'valid');
+            %             positions = (w+1):(valid_len-w+1);
+            %             [grad_min, idx_min] = max(grad);
+            %             i_min = positions(idx_min);
+            %             surf(i,j) = i_min;
+            %         else
+            %             surf(i, j) = 1;
+            %         end
+            %     end
+            % end
+            % 
+            % % Median filtering of surface map
+            % surf = medfilt2(surf, [3, 3],'symmetric');
+            % 
+            % outliers = isoutlier(surf);
+            % surf( outliers ) = int32(mean( surf(~outliers) ));
         else 
             surf = single(niftiread(surface));     % expected X × Y of 0-based z-indices
             if ~isequal(size(surf), [nx, ny])
@@ -138,7 +166,7 @@ function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, bir
     surf = max(1, min(nz, round(surf)));
     stopIdx = min(nz, surf + depth);
 
-
+    writeIfPath(surfOut, surf, shrinkHeader(infoIn));
     % -------- Write requested 3D outputs --------
     writeIfPath(dBI3D, dBI3D_vol, infoIn);
     writeIfPath(R3D,   R3D_vol,   infoIn);
@@ -164,7 +192,12 @@ function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, bir
         if (oriMethod == "new")
             oriMap = enfaceOrientation(O3D_vol, surf, stopIdx);
         else
-            oriMap = orien_enface(O3D_vol,5);
+            for i = 1:nx
+                for j = 1:ny
+                    O3D_vol_tmp(i,j,:) = squeeze(O3D_vol(i,j,surf(i,j):stopIdx(i,j)));
+                end
+            end
+            oriMap = orien_enface(O3D_vol_tmp,3);
         end
         writeIfPath(ori, oriMap, shrinkHeader(infoIn));
     end
@@ -324,7 +357,6 @@ function oriMap = enfaceOrientation(O3D_deg, surf, stopIdx)
     % Circular mean of 180°-periodic orientations using doubled-angle trick.
     nx = size(O3D_deg,1); ny = size(O3D_deg,2);
     oriMap = zeros(nx,ny,'single');
-    disp("new orientation method")
     for i = 1:nx
         for j = 1:ny
             z1 = surf(i,j); z2 = stopIdx(i,j);
