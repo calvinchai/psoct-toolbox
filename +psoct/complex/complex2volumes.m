@@ -4,12 +4,16 @@ function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(V, flipPhase=false, pha
 % V is a 3D array of size (4*X) × Y × Z, where the first dimension stacks
 % [J1_real; J1_imag; J2_real; J2_imag].
 % Returns backscatter (dBI3D_vol), retardance (R3D_vol), and optic axis
-% orientation (O3D_vol) volumes, along with an intensity alias (inten) and
-% the inferred spatial dimensions nx, ny, nz.
+% orientation (O3D_vol) volumes.
 %
 % NAME-VALUE (optional):
 %   "flipPhase" : boolean, flip the phase of the optic axis orientation (default false).
 %   "phaseOffset" : scalar, phase offset in radians (default 100/180*pi).
+%   "flipZ" : boolean, flip the volume along the z-axis (default true).
+% Returns:
+%   dBI3D_vol : backscatter volume (dB)
+%   R3D_vol : retardance volume (degrees)
+%   O3D_vol : optic axis orientation volume (degrees)
 
     % Infer dimensions and split Jones components
     [nx, ny, nz] = size(V);
