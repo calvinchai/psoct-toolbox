@@ -26,7 +26,6 @@ function enfaceMap = enfaceMedian(vol, surfaceMap, enfaceOffset, enfaceDepth)
 %   -----
 %   NaN values within the axial window are ignored when computing the median.
 
-narginchk(2, 4);
 enfaceMap = enfaceReduce( ...
     vol, @(vals) median(vals, 'omitnan'), surfaceMap, enfaceOffset, enfaceDepth);
 end

@@ -17,30 +17,20 @@ function enfaceMap = enfaceReduce(vol, reducer, surfaceMap, enfaceOffset, enface
 %
 %   where vals is a column vector of values along the axial dimension.
 
-narginchk(3, 5);
-
-if nargin < 3 || isempty(enfaceOffset)
-    enfaceOffset = 0;
+arguments
+    vol (:,:,:) {mustBeReal, mustBeNonempty}
+    reducer (1,1) function_handle
+    surfaceMap (:,:) {mustBeReal, mustBeNonempty}
+    enfaceOffset (1,1) {mustBeReal, mustBeFinite} = 0
+    enfaceDepth (1,1) {mustBeReal, mustBeFinite, mustBePositive} = 70
 end
 
-if nargin < 4 || isempty(enfaceDepth)
-    enfaceDepth = 70;
-end
-
-% ----- Validate volume -----
-validateattributes(vol, {'numeric'}, {'real', 'nonempty'}, ...
-    mfilename, 'vol', 1);
-if ndims(vol) ~= 3
-    error('vol must be a real numeric 3-D array.');
-end
 [nx, ny, nz] = size(vol);
 
-validateattributes(surfaceMap, {'numeric'}, ...
-    {'real', 'size', [nx, ny]}, mfilename, 'surfaceMap', 2);
-validateattributes(enfaceOffset, {'numeric'}, ...
-    {'scalar', 'real', 'finite'}, mfilename, 'enfaceOffset', 3);
-validateattributes(enfaceDepth, {'numeric'}, ...
-    {'scalar', 'real', 'finite', '>', 0}, mfilename, 'enfaceDepth', 4);
+if ~isequal(size(surfaceMap), [nx, ny])
+    error('psoct:enfaceReduce:surfaceSizeMismatch', ...
+        'surfaceMap must be size [%d %d] to match the lateral dimensions of vol.', nx, ny);
+end
 
 enfaceMap = zeros(nx, ny, 'single');
 for x = 1:nx

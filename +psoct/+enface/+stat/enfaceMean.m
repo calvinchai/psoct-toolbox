@@ -26,7 +26,6 @@ function enfaceMap = enfaceMean(vol, surfaceMap, enfaceOffset, enfaceDepth)
 %   -----
 %   NaN values within the axial window are ignored when computing the mean.
 
-narginchk(2, 4);
 enfaceMap = enfaceReduce( ...
     vol, @(vals) mean(vals, 'omitnan'), surfaceMap, enfaceOffset, enfaceDepth);
 end
