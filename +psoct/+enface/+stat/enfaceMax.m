@@ -27,7 +27,7 @@ function enfaceMap = enfaceMax(vol, surfaceMap, enfaceOffset, enfaceDepth)
 %   NaN values within the axial window are ignored when computing the maximum.
 
 narginchk(2, 4);
-enfaceMap = psoct.enface.stat.internal.enfaceReduce( ...
+enfaceMap = enfaceReduce( ...
     vol, @(vals) max(vals, [], 'omitnan'), surfaceMap, enfaceOffset, enfaceDepth);
 end
 
