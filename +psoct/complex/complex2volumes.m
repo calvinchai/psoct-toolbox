@@ -1,4 +1,4 @@
-function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(V, flipPhase=false, phaseOffset=100/180*pi)
+function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(V, flipPhase=false, phaseOffset=100/180*pi, flipZ=true)
 % complex2volumes Convert stacked Jones real/imag volume into PS-OCT metric volumes.
 %
 % V is a 3D array of size (4*X) × Y × Z, where the first dimension stacks
@@ -12,13 +12,11 @@ function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(V, flipPhase=false, pha
 %   "phaseOffset" : scalar, phase offset in radians (default 100/180*pi).
 
     % Infer dimensions and split Jones components
-    X4 = size(V, 1);
-    if mod(X4, 4) ~= 0
-        error('Input first dimension must be a multiple of 4: got %d.', X4);
+    [nx, ny, nz] = size(V);
+    if mod(nx, 4) ~= 0
+        error('Input first dimension must be a multiple of 4: got %d.', nx);
     end
-    nx = X4/4; 
-    ny = size(V, 2); 
-    nz = size(V, 3);
+    nx = nx/4; 
 
     J1r = V(1:nx,         :, :);
     J1i = V(nx+1:2*nx,    :, :);
@@ -30,10 +28,10 @@ function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(V, flipPhase=false, pha
 
     % Intensity and dB backscatter
     IJones = abs(J1).^2 + abs(J2).^2;
-    dBI3D_vol = flip(10*log10(max(IJones, eps('single'))), 3);
+    dBI3D_vol = 10*log10(max(IJones, eps('single')));
 
     % Retardance volume (degrees)
-    R3D_vol  = flip(atan(abs(J1) ./ max(abs(J2), eps('single'))) / pi * 180, 3);
+    R3D_vol  = atan(absJ1 ./ max(absJ2, epsJ)) / pi * 180;
 
     phase1 = angle(J1);
     phase2 = angle(J2);
@@ -46,7 +44,11 @@ function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(V, flipPhase=false, pha
     end
     phi(phi >  pi) = phi(phi >  pi) - 2*pi;
     phi(phi < -pi) = phi(phi < -pi) + 2*pi;
-    O3D_vol = flip((phi / (2*pi)) * 180, 3);
-
+    O3D_vol = (phi / (2*pi)) * 180;
+    if flipZ
+        dBI3D_vol = flip(dBI3D_vol, 3);
+        R3D_vol = flip(R3D_vol, 3);
+        O3D_vol = flip(O3D_vol, 3);
+    end
 end
 
