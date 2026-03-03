@@ -17,7 +17,7 @@ function all_s2c(base_dir, output_dir, pattern1, pattern2)
     else
         addpath('/autofs/cluster/octdata2/users/Hui/PSCalibration/code');
         addpath('/autofs/cluster/octdata2/users/Hui/tools/rob_utils');
-        addpath('/autofs/cluster/octdata2/users/Chao/code/telesto');
+        addpath('/autofs/space/megaera_001/users/kchai/code/psoct-renew/telesto');
         addpath('/autofs/cluster/octdata2/users/Chao/code/tools/freesurfer')
     end
 
@@ -34,7 +34,7 @@ function all_s2c(base_dir, output_dir, pattern1, pattern2)
     Bline_004 = 350;
 
     % Parallel workers settings
-    nWorkers = 15; 
+    nWorkers = 12; 
 
     % Log file setup
     logFile = fullfile(output_dir, 'batch_run_s2c_log.txt');
@@ -50,9 +50,8 @@ function all_s2c(base_dir, output_dir, pattern1, pattern2)
     end
 
     %% === Build file list ===
-    files1 = dir(fullfile(base_dir, pattern1));
-    files2 = dir(fullfile(base_dir, pattern2));
-
+    files1 = dir(fullfile(base_dir, pattern1 ));
+    files2 = dir(fullfile(base_dir, pattern2 ));
     fileList = {};
     paramsA = [];
     paramsB = [];

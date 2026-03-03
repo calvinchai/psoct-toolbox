@@ -21,7 +21,7 @@ for i = 1:length(slice_nums)
     alpha = pi/2 - Psi_ObsLSQ;
     alpha(alpha > pi/2) = alpha(alpha > pi/2) - pi;
     alpha(alpha < -pi/2) = alpha(alpha < -pi/2) + pi;
-
+    
     % Normalize birefringence intensity
     I_B = (biref_ObsLSQ - prctile(biref_ObsLSQ(:), 1)) / prctile(biref_ObsLSQ(:), 20);
     I_B(I_B > 1) = 1;
@@ -31,13 +31,20 @@ for i = 1:length(slice_nums)
     [X, Y, Z] = sph2cart(Theta_ObsLSQ, alpha, I_B);
 
     % Combine into RGB-like 3D vector field
-    oct_vec_3d = cat(3, Y, Z, X);
-
+    % oct_vec_3d = cat(3, Y, Z, X);
+    oct_vec_3d = cat(3, -X, Z, Y);
     % Output filename
-    outfile = sprintf('%s3daxis%d.jpg', basename, slice_num);
 
+    outfile = sprintf('%s/3daxis%d.jpg', basename, slice_num);
+    
     % Write image
     imwrite(abs(oct_vec_3d), outfile);
+
+    % outfile = sprintf('%s3daxis%d.tiff', basename, slice_num);
+    % imwrite(abs(oct_vec_3d), outfile);
+
+    outfile = sprintf('%s3daxis%d.nii', basename, slice_num);
+    niftiwrite(oct_vec_3d, outfile);
 
     fprintf('Saved 3D axis image for slice %d: %s\n', slice_num, outfile);
 end

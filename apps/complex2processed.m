@@ -1,5 +1,5 @@
 
-function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, biref, O3D, R3D, dBI3D, surfOut, oriMethod, birefMethod,varargin)
+function complex2processed(input, output_prefix, surface, depth, zSize, wavelength, oriMethod, birefMethod)
 % Complex2Processed
 % Compute 3D metrics (dBI3D, R3D, O3D) and optional enface 2D maps (AIP, MIP, RET, ORI),
 % plus optional birefringence from a single complex PS-OCT NIfTI volume.    
@@ -24,40 +24,26 @@ function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, bir
 %
 % Example:
 % Complex2Processed("complex.nii.gz","surf.nii.gz",100,3.3,"aip.nii.gz","", "", "", "biref.nii.gz", "", "", "");
+    dBI3D = output_prefix + "_dBI.nii";
+    R3D = output_prefix + "_R3D.nii";
+    O3D = output_prefix + "_O3D.nii";
+    biref = output_prefix + "_biref.nii";
+    aip = output_prefix + "_aip.nii";
+    mip = output_prefix + "_mip.nii";
+    ret = output_prefix + "_ret.nii";
+    ori = output_prefix + "_ori.nii";
+    surface_output = output_prefix + "_surf.nii";
 
-    arguments
-        input string
-        surface = 1 
-        depth (1,1) {mustBeInteger, mustBeNonnegative} = 100
-        zSize (1,1) double {mustBePositive} = 1.0
-        aip string = ""
-        mip string = ""
-        ret string = ""
-        ori string = ""
-        biref string = ""
-        O3D string = ""
-        R3D string = ""
-        dBI3D string = ""
-        surfOut string = ""
-        oriMethod string = ""
-        birefMethod string = ""
-    end
-    arguments (Repeating)
-        varargin
-    end
-    % Parse optional wavelength for birefringence (micrometers)
-    p = inputParser;
-    addParameter(p,"WavelengthUm",1.3, @(x)isnumeric(x)&&isscalar(x)&&x>0);
-    parse(p,varargin{:});
-    lambda_um = p.Results.WavelengthUm;
+    lambda_um = str2double(wavelength);
+    depth = str2double(depth);
+    zSize = str2double(zSize);
 
+    if ischar(surface)
+        surface = string(surface);
+    end
     % -------- Load input complex NIfTI --------
     infoIn = niftiinfo(input);
     V = niftiread(infoIn);               % single or double; dimensions: (4*X) × Y × Z
-    V = decode_fp16_uint16(V);
-    %%
-    % V = single(V);                       % enforce single precision downstream  
-    %%
     
     % Infer dimensions and split Jones components
     X4 = size(V,1);
@@ -90,12 +76,9 @@ function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, bir
     O3D_vol = flip((phi/(2*pi))*180,3);         % degrees, nominally [-90,90]
 
     surf = zeros(nx, ny);  % Output surface map
-    % dBI3D_vol = flip(dBI3D_vol,3);
-    % O3D_vol = flip(O3D_vol,3);
-    % R3D_vol = flip(R3D_vol,3);
     if isnumeric(surface) && mod(surface,1) == 0
         surf = surf+ surface;
-    elseif isstring(surface)
+    elseif isstring(surface) 
         if surface == "find"
             w = 5;
             w2 = 5;
@@ -122,40 +105,8 @@ function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, bir
         
             % Median filtering of surface map
             surf = medfilt2(surf, [3, 3],'symmetric');
-            % w = 5;
-            % w2 = 5;
-            % kernel = [-ones(1, w)/w, ones(1, w2)/w2];  % Gradient kernel
-            % 
-            % for i = 1:nx
-            %     for j = 1:ny
-            %         line = squeeze(inten(i, j, :) );
-            %         % line = imgaussfilt( squeeze(inten(i, j, :) ) ,5);
-            %         valid_len = sum(line > 0.01);
-            %         norm_profile = squeeze(norms(i, j, 1:min(20, end)));  % match [:10] behavior
-            % 
-            %         if mean(norm_profile(:)) > 0.5
-            %             surf(i, j) = 1;  % override surface
-            %         elseif (mean(line(1:min(10, end))) > prctile(line,80)) & mean(norm_profile(:)) > 0.30
-            %             surf(i, j) = 1;  % override surface
-            %         elseif valid_len > w + w2
-            %             data = imgaussfilt(line(1:valid_len), 5);  % 1D Gaussian smoothing
-            %             grad = -conv(data, kernel, 'valid');
-            %             positions = (w+1):(valid_len-w+1);
-            %             [grad_min, idx_min] = max(grad);
-            %             i_min = positions(idx_min);
-            %             surf(i,j) = i_min;
-            %         else
-            %             surf(i, j) = 1;
-            %         end
-            %     end
-            % end
-            % 
-            % % Median filtering of surface map
-            % surf = medfilt2(surf, [3, 3],'symmetric');
-            % 
-            % outliers = isoutlier(surf);
-            % surf( outliers ) = int32(mean( surf(~outliers) ));
-        else 
+        else
+            
             surf = single(niftiread(surface));     % expected X × Y of 0-based z-indices
             if ~isequal(size(surf), [nx, ny])
                 error('Surface size mismatch: expected %dx%d, got %s.', nx, ny, mat2str(size(surf)));
@@ -166,7 +117,7 @@ function Complex2Processed(input, surface, depth, zSize, aip, mip, ret, ori, bir
     surf = max(1, min(nz, round(surf)));
     stopIdx = min(nz, surf + depth);
 
-    writeIfPath(surfOut, surf, shrinkHeader(infoIn));
+    writeIfPath(surface_output, surf, shrinkHeader(infoIn));
     % -------- Write requested 3D outputs --------
     writeIfPath(dBI3D, dBI3D_vol, infoIn);
     writeIfPath(R3D,   R3D_vol,   infoIn);

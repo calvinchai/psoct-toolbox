@@ -287,7 +287,8 @@ for groupIndex =    1 :   length(FileNum) %loop file numbers
         R3D(FileInd,:,:) = retardance(:,:)';
         O3D(FileInd,:,:) = orientation(:,:)';
     end        % for FileInd
-    
+    niftiwrite(permute(dBI3D,[2 1 3]) ,'/space/megaera/1/users/kchai/project/dBI3D.nii');
+    niftiwrite(permute(O3D, [2 1 3]),'/space/megaera/1/users/kchai/project/O3D.nii');
 
     if MakePlots
         

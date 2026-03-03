@@ -1,13 +1,4 @@
 function s2c(filename, FileNum, dispCompFile, Aline_length, Bline_length, output_path)
-% Modified from Save3D_tile_20250429: stop after Jones1/Jones2 computed,
-% stack them across B-line, split into real/imag parts and concat along dim 1.
-%
-% Returns:
-%   Jstack_all : (4*Bline) x Aline x Depth  -> [real(J1); imag(J1); real(J2); imag(J2)]
-%   J1_split   : (2*Bline) x Aline x Depth  -> [real(J1); imag(J1)]
-%   J2_split   : (2*Bline) x Aline x Depth  -> [real(J2); imag(J2)]
-%
-% Usage: [Jstack_all, J1_split, J2_split] = Save3D_tile_20250429_jonesstack(...)
 
 % if isdeployed
 % else
@@ -30,13 +21,22 @@ function s2c(filename, FileNum, dispCompFile, Aline_length, Bline_length, output
 %
 
 % Replace anything starting with 'spectral' and ending before extension
-new_base = regexprep(base_name, 'spectral.*$', 'processed_cropped');
+new_base = regexprep(base_name, 'spectral.*$', 'complex');
+
+% If new_base matches 'mosaic_\d{3}_image_\d{3}_complex'
+% pad image number to four digits for consistent output filename
+tokens = regexp(new_base, '^mosaic_(\d{3})_image_(\d{3})_complex$', 'tokens', 'once');
+if ~isempty(tokens)
+    % reconstruct with 4-digit image index
+    mosaic_str = tokens{1};
+    image_idx = str2double(tokens{2});
+    image_str = sprintf('%04d', image_idx);
+    new_base = sprintf('mosaic_%s_image_%s_complex', mosaic_str, image_str);
+end
+
 
 % Compose output file path
 output_file = fullfile(output_path, [new_base '.nii']);
-if isfile(output_file)
-    return
-end
 
 tic
 warning off MATLAB:polyfit:RepeatedPointsOrRescale
@@ -58,7 +58,7 @@ OriginalLineLength2 = 2048;
 Start1=1;
 Start2=1;
 InterpolationParameters = [PaddingFactor,PaddingLength,OriginalLineLength1,Start1,OriginalLineLength2,Start2];
-[Wavelengths_l, Wavelengths_r,InterpolatedWavelengths2, Ks] = interpolationwave_101620 (InterpolationParameters);
+[Wavelengths_l, Wavelengths_r,InterpolatedWavelengths2, Ks] = interpolationwave_20201130 (InterpolationParameters);
 InterpolatedWavelengths = InterpolatedWavelengths2;
 
 % read dispersion correction file(s)
@@ -94,15 +94,17 @@ for groupIndex = 1 : length(FileNum)
         data1=fread(fid, AlineLength*Aline, 'uint16');
         fclose(fid);
         WavelengthBuffer1=reshape(data1,2048,[]);
-        
+        % WavelengthBuffer1=flipud(reshape(data1,2048,[]));
         fid=fopen(filename, 'rb');
         fseek(fid,(FileInd-1)*AlineLength*Aline*2*2+AlineLength*Aline*2+352,'bof');
         data2=fread(fid, AlineLength*Aline, 'uint16');
         fclose(fid);
         WavelengthBuffer2=flipud(reshape(data2,2048,[]));
+        % WavelengthBuffer2=reshape(data2,2048,[]);
         
         refdata1=mean(WavelengthBuffer1,2);
         refdata2=mean(WavelengthBuffer2,2);
+        
         MeanScan1=WavelengthBuffer1-repmat(refdata1,1,Aline);
         MeanScan2=WavelengthBuffer2-repmat(refdata2,1,Aline);
         
@@ -133,21 +135,14 @@ for groupIndex = 1 : length(FileNum)
         % NOTE: we stop here — no dBI3D/R3D/O3D computations or saving
     end % for FileInd
 end % for groupIndex
+
 Jones1_3D = permute(Jones1_3D, [2 1 3]);
 Jones2_3D = permute(Jones2_3D, [2 1 3]);
 % Now split each Jones stack into real and imaginary parts and concat along dim 1
 % real_J1: Bline x Aline x Depth  -> we'll stack along dim 1, so cat(1, real, imag) -> (2*Bline) x Aline x Depth
-J1_real = real(Jones1_3D);
-J1_imag = imag(Jones1_3D);
-J1_split = cat(1, J1_real, J1_imag);   % (2*Bline) x Aline x Depth
-
-J2_real = real(Jones2_3D);
-J2_imag = imag(Jones2_3D);
-J2_split = cat(1, J2_real, J2_imag);   % (2*Bline) x Aline x Depth
-
-% Final concatenation: [J1_split; J2_split] -> (4*Bline) x Aline x Depth
-Jstack_all = cat(1, J1_split, J2_split);
-
+Jstack_all = cat(1, ...
+    real(Jones1_3D), imag(Jones1_3D), ...
+    real(Jones2_3D), imag(Jones2_3D));
 
 fprintf('Saving output to: %s\n', output_file);
 Jstack_all = flip(Jstack_all,3);

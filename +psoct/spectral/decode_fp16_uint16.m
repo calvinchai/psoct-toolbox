@@ -2,6 +2,7 @@ function out = decode_fp16_uint16(arr)
     % If the input is uint16, reinterpret as float16 bit patterns
     if all(mod(arr(:),1)==0)
         out = single(typecast(uint16(arr(:)),'half'));
+        % out = half.typecast(uint16(arr(:)));
     else 
         out =arr;
     end
