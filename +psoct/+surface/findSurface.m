@@ -1,7 +1,7 @@
-function surf = computeSurface(surfaceSpec, inten)
-%COMPUTESURFACE Resolve a surface specification into an nx-by-ny surface map.
+function surf = findSurface(surfaceSpec, inten)
+%FINDSURFACE Resolve a surface specification into an nx-by-ny surface map.
 %
-%   surf = psoct.surface.computeSurface(surfaceSpec, inten)
+%   surf = psoct.surface.findSurface(surfaceSpec, inten)
 %
 %   surfaceSpec:
 %       - numeric scalar integer : flat surface at that index
