@@ -158,8 +158,8 @@ for blineIndex = 1:Bline
     InterpolatedBuffer2 = InterpolatedBuffer2 .* phaseCorrection2;
 
     % Obtain Jones vectors (complex) for this B-line (size: Depth x Aline)
-    Jones1 = Buffer2Jones(InterpolatedBuffer1, PaddingFactor, AutoCorrPeakCut);
-    Jones2 = Buffer2Jones(InterpolatedBuffer2, PaddingFactor, AutoCorrPeakCut);
+    Jones1 = buffer2jones(InterpolatedBuffer1, PaddingFactor, AutoCorrPeakCut);
+    Jones2 = buffer2jones(InterpolatedBuffer2, PaddingFactor, AutoCorrPeakCut);
 
     % Store into the stack. Original code transposed depth vs alines for dBI3D,
     % so we keep the same orientation: Jones returned as Depth x Aline -> transpose to Aline x Depth
