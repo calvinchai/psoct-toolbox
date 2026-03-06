@@ -1,5 +1,5 @@
-function writeNiftiIfPath(pathStr, data, infoLike, options)
-% psoct.internal.writeNiftiIfPath
+function future = writeNiftiIfPath(pathStr, data, infoLike, options)
+% psoct.internal.nifti.writeNiftiIfPath
 % Write NIfTI if path is non-empty, with header/datatype fixups.
 %
 % options.Expand2DTo3D (logical, default false):
@@ -13,6 +13,7 @@ function writeNiftiIfPath(pathStr, data, infoLike, options)
     end
 
     if strlength(string(pathStr)) == 0 || isempty(pathStr)
+        future = [];
         return;
     end
 
@@ -72,7 +73,17 @@ function writeNiftiIfPath(pathStr, data, infoLike, options)
     infoOut.Raw.bitpix = bpp;
 
     isgz = endsWith(string(pathStr), ".nii.gz");
-    niftiwrite(data, pathStr, infoOut, "Compressed", isgz);
+    pool = [];
+    if exist("gcp", "file") == 2
+        pool = gcp("nocreate");
+    end
+
+    if isempty(pool)
+        localWriteNifti(data, pathStr, infoOut, isgz);
+        future = [];
+    else
+        future = parfeval(pool, @localWriteNifti, 0, data, pathStr, infoOut, isgz);
+    end
 end
 
 function [dtype, bpp, dtcode] = class2niftiMeta(cls)
@@ -88,7 +99,11 @@ function [dtype, bpp, dtcode] = class2niftiMeta(cls)
         case "int64",   dtype = "int64";   bpp = 64; dtcode = 1024;
         case "uint64",  dtype = "uint64";  bpp = 64; dtcode = 1280;
         otherwise
-            error("psoct.internal.writeNiftiIfPath:UnsupportedClass", ...
+            error("psoct.internal.nifti.writeNiftiIfPath:UnsupportedClass", ...
                 "Unsupported data class for NIfTI: %s", cls);
     end
+end
+
+function localWriteNifti(data, pathStr, infoOut, isgz)
+    niftiwrite(data, pathStr, infoOut, "Compressed", isgz);
 end
