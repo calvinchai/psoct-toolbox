@@ -19,7 +19,7 @@ function [Jones1_3D, Jones2_3D] = spectral2complex(filename, dispCompFile, Aline
 %   s2c_raw implementation when called with the corresponding parameters.
 arguments
     filename {mustBeTextScalar, mustBeNonempty}
-    dispCompFile {mustBeTextScalar} = getDataFile("LSM03_mineral_oil_placecorrectionmeanall2.dat")
+    dispCompFile {mustBeTextScalar} = psoct.internal.getDataFile("LSM03_mineral_oil_placecorrectionmeanall2.dat")
     AlineSize (1,1) integer {mustBePositive} = 200
     BlineSize (1,1) integer {mustBePositive} = 350
     outputPath {mustBeTextScalar} = ""
@@ -68,7 +68,7 @@ InterpolationParameters = [ ...
     OriginalLineLength2, Start2];
 
 [Wavelengths_l, Wavelengths_r, InterpolatedWavelengths2, Ks] = ...
-    interpolationwave_20201130(InterpolationParameters); %#ok<ASGLU>
+    psoct.legacy.interpolationwave_20201130(InterpolationParameters); %#ok<ASGLU>
 
 % Package parameters that are shared across B-lines
 params = struct();
