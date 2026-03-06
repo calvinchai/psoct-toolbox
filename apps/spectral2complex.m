@@ -3,10 +3,7 @@
 function spectral2complex(filename, Aline_length, Bline_length, output_path)
 if isdeployed
 else
-    addpath('/autofs/cluster/octdata2/users/Hui/PSCalibration/code');
-    addpath('/autofs/cluster/octdata2/users/Hui/tools/rob_utils');
-    addpath('/autofs/cluster/octdata2/users/Chao/code/telesto');
-    addpath('/autofs/cluster/octdata2/users/Chao/code/tools/freesurfer')
+    
 end
 dispCompFile = '/autofs/cluster/octdata2/users/Hui/tools/dg_utils/spectralprocess/dispComp/mineraloil_LSM03/dispersion_compensation_LSM03_mineraloil_20240829/LSM03_mineral_oil_placecorrectionmeanall2.dat';
 

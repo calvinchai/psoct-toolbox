@@ -44,79 +44,17 @@ function complex2processed(input, output_prefix, surface, depth, zSize, waveleng
     % -------- Load input complex NIfTI --------
     infoIn = niftiinfo(input);
     V = niftiread(infoIn);               % single or double; dimensions: (4*X) × Y × Z
-    
-    % Infer dimensions and split Jones components
-    X4 = size(V,1);
-    if mod(X4,4)~=0
-        error('Input first dimension must be a multiple of 4: got %d.', X4);
-    end
-    nx = X4/4; ny = size(V,2); nz = size(V,3);
 
-    J1r = V(1:nx,         :, :);
-    J1i = V(nx+1:2*nx,    :, :);
-    J2r = V(2*nx+1:3*nx,  :, :);
-    J2i = V(3*nx+1:4*nx,  :, :);
+    % Convert complex stack into PS-OCT metric volumes
+    [dBI3D_vol, R3D_vol, O3D_vol, inten, nx, ny, nz] = ...
+        psoct.complex.complex2volumes(V);
+    clear V
 
-    J1  = complex(J1r, J1i);
-    J2  = complex(J2r, J2i);
+    surf = psoct.surface.findSurface(surface, inten);
 
-    clear V J1r J1i J2r J2i
-
-    IJones = abs(J1).^2 + abs(J2).^2;
-    dBI3D_vol =  flip(10*log10(max(IJones, eps('single'))),3);
-    inten = dBI3D_vol;  
-    R3D_vol  = flip(atan( abs(J1)./max(abs(J2), eps('single')) )/pi*180,3);
-
-    phase1 = angle(J1);
-    phase2 = angle(J2);
-    % phi = (phase1 - phase2)+45/180*pi*2;                       % wrap to [-pi,pi]
-    phi = phase2-phase1 ;%+ 45/180*pi*2;                       
-    phi(phi >  pi) = phi(phi >  pi) - 2*pi;
-    phi(phi < -pi) = phi(phi < -pi) + 2*pi;
-    O3D_vol = flip((phi/(2*pi))*180,3);         % degrees, nominally [-90,90]
-
-    surf = zeros(nx, ny);  % Output surface map
-    if isnumeric(surface) && mod(surface,1) == 0
-        surf = surf+ surface;
-    elseif isstring(surface) 
-        if surface == "find"
-            w = 5;
-            w2 = 5;
-            kernel = [-ones(1, w)/w, ones(1, w2)/w2];  % Gradient kernel
-        
-            for i = 1:nx
-                for j = 1:ny
-                    line = squeeze(inten(i, j, :) );
-                    % line = line(end:-1:1);
-                    % line = imgaussfilt( squeeze(inten(i, j, :) ) ,5);
-                    valid_len = sum(line > 0.01);
-                    if valid_len > w + w2
-                        data = imgaussfilt(line(1:valid_len), 5);  % 1D Gaussian smoothing
-                        grad = -conv(data, kernel, 'valid');
-                        positions = (w+1):(valid_len-w+1);
-                        [grad_min, idx_min] = max(grad);
-                        i_min = positions(idx_min);
-                        surf(i,j) = i_min+10;
-                    else
-                        surf(i, j) = 11;
-                    end
-                end
-            end
-        
-            % Median filtering of surface map
-            surf = medfilt2(surf, [3, 3],'symmetric');
-        else
-            
-            surf = single(niftiread(surface));     % expected X × Y of 0-based z-indices
-            if ~isequal(size(surf), [nx, ny])
-                error('Surface size mismatch: expected %dx%d, got %s.', nx, ny, mat2str(size(surf)));
-            end
-        end
-    end 
-    
     surf = max(1, min(nz, round(surf)));
     stopIdx = min(nz, surf + depth);
-
+    
     writeIfPath(surface_output, surf, shrinkHeader(infoIn));
     % -------- Write requested 3D outputs --------
     writeIfPath(dBI3D, dBI3D_vol, infoIn);
@@ -141,7 +79,7 @@ function complex2processed(input, output_prefix, surface, depth, zSize, waveleng
 
     if strlength(ori)>0
         if (oriMethod == "new")
-            oriMap = enfaceOrientation(O3D_vol, surf, stopIdx);
+            oriMap = psoct.enface.stat.enfaceCircularMean(O3D_vol, surf, stopIdx);
         else
             for i = 1:nx
                 for j = 1:ny
@@ -304,22 +242,8 @@ function retMap = enfaceMean(volDeg, surf, stopIdx)
     end
 end
 
-function oriMap = enfaceOrientation(O3D_deg, surf, stopIdx)
-    % Circular mean of 180°-periodic orientations using doubled-angle trick.
-    nx = size(O3D_deg,1); ny = size(O3D_deg,2);
-    oriMap = zeros(nx,ny,'single');
-    for i = 1:nx
-        for j = 1:ny
-            z1 = surf(i,j); z2 = stopIdx(i,j);
-            if z2 < z1, z2 = z1; end
-            theta = 2*deg2rad(squeeze(O3D_deg(i,j,z1:z2))); % why multiplied by 2
-            x = cos(theta);
-            y = sin(theta);                     
-            mean_angle = atan2(sum(y), sum(x));
-            oriMap(i,j) = mean_angle / 2 / pi * 180;
-        end
-    end
-end
+% enfaceOrientation has been refactored into the shared helper
+% psoct.enface.stat.enfaceCircularMean.
 
 function birefMap = fitBirefringence(R3D_deg, surf, stopIdx, zSize_um, lambda_um)
     % Fit slope of OPD (cycles*lambda) vs depth to estimate Δn.
