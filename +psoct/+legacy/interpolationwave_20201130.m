@@ -1,10 +1,10 @@
-function [Wavelengths_l, Wavelengths_r,InterpolatedWavelengths, Ks, Ko1, Ko2]=c(Parameters)
-% [Wavelengths_l, Wavelengths_r,InterpolatedWavelengths,Ks]=interpolationwave(Parameters)
+function [Wavelengths_l, Wavelengths_r,InterpolatedWavelengths, Ks, Ko1, Ko2]=interpolationwave_20201130(Parameters)
+% [Wavelengths_l, Wavelengths_r,InterpolatedWavelengths,Ks]=interpolationwave_20201130(Parameters)
 % Parameters=[PaddingFactor, PaddingLength, OriginalLineLength1, Start1, OriginalLineLength2, Start2]
 
 format long
-% load('/autofs/space/megaera_001/users/kchai/code/psoct-renew/telesto/wave-pixel');
-load('/autofs/cluster/octdata2/users/calibration_nov21/calibration/wave-pixel.mat');
+
+load(psoct.internal.getDataFile('wave-pixel.mat'));
 % mu wavelength wave_prime (where wave_prime == wavelength)
 
 disp(' interpolating buffer ');
@@ -119,9 +119,9 @@ xx1=linspace(Start1,Start1+OriginalLineLength1-1,PaddingLength);
 Wavelengths_l=1e-9*interp1([Start1:Start1+OriginalLineLength1-1],W_l,xx1,'linear','extrap')';
 xx2=linspace(Start2,Start2+OriginalLineLength2-1,PaddingLength);
 Wavelengths_r=1e-9*interp1([Start2:Start2+OriginalLineLength2-1],W_r,xx2,'linear','extrap')';
-% Wavelengths_l(1) 
+% Wavelengths_l(1)
 % Wavelengths_r(1)
-% Wavelengths_l(end) 
+% Wavelengths_l(end)
 % Wavelengths_r(end)
 minK = 2*pi / min([Wavelengths_l(end) Wavelengths_r(end)]);
 maxK = 2*pi / max([Wavelengths_l(1) Wavelengths_r(1)]);
@@ -135,7 +135,7 @@ Ko2 = (2*pi) ./ Wavelengths_r;
 % figure,plot([lamda_l' lamda_r']); legend('\lambda_l','\lambda_r');
 % fout=['/autofs/cluster/octdata2/users/Hui/PSCalibration/SpectrometerCal_10xw_20201016/interpolationwave_lambda_plot.png'];
 % print(gcf,fout,'-dpng','-r300');
-% 
+%
 % figure('position',[288 153 960 798]); hold on;
 % plot((1:PaddingLength)',[Wavelengths_l Wavelengths_r],'linewidth',1.5);
 % plot(position_l*PaddingFactor,1e-9*wave_sample,'.','markersize',14,'color','r');
@@ -143,7 +143,7 @@ Ko2 = (2*pi) ./ Wavelengths_r;
 % legend('wavelengths_l','wavelengths_r','position_l*pad vs wavesample','position_l*pad vs wavesample','Location','best');
 % fout=['/autofs/cluster/octdata2/users/Hui/PSCalibration/SpectrometerCal_10xw_20201016/interpolationwave_wavelengths_plot1.png'];
 % print(gcf,fout,'-dpng','-r300');
-% 
+%
 % figure,plot((Wavelengths_l-Wavelengths_r)*(1e+9));
 % title('wavelengths_l - wavelength_r');
 % fout=['/autofs/cluster/octdata2/users/Hui/PSCalibration/SpectrometerCal_10xw_20201016/interpolationwave_wavelengths_plot2.png'];
