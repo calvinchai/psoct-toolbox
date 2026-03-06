@@ -1,4 +1,4 @@
-function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(J1, J2, flipPhase, phaseOffset, flipZ, opts)
+function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(J1, J2, volumeOpts, outputOpts)
 % complex2volumes Convert complex Jones volumes into PS-OCT metric volumes.
 %
 % J1 and J2 are complex-valued 3D arrays of size X × Y × Z representing the
@@ -7,12 +7,12 @@ function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(J1, J2, flipPhase, phas
 % orientation (O3D_vol) volumes.
 %
 % OPTIONAL:
-%   flipPhase   : boolean, flip the phase of the optic axis orientation (default false).
-%   phaseOffset : scalar, phase offset in radians (default 100/180*pi).
-%   flipZ       : boolean, flip the volume along the z-axis (default true).
-%   opts.Paths  : struct with optional fields dBI3D, R3D, O3D.
-%                 Non-empty path writes the corresponding output volume.
-%   opts.InfoLike : optional NIfTI-info-like struct used as write template.
+%   volumeOpts.flipPhase   : boolean, flip the phase of the optic axis orientation (default false).
+%   volumeOpts.phaseOffset : scalar, phase offset in radians (default 100/180*pi).
+%   volumeOpts.flipZ       : boolean, flip the volume along the z-axis (default true).
+%   outputOpts.Paths       : struct with optional fields dBI3D, R3D, O3D.
+%                            Non-empty path writes the corresponding output volume.
+%   outputOpts.InfoLike    : optional NIfTI-info-like struct used as write template.
 % Returns:
 %   dBI3D_vol : backscatter volume (dB)
 %   R3D_vol : retardance volume (degrees)
@@ -21,21 +21,25 @@ function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(J1, J2, flipPhase, phas
 arguments
     J1 (:,:,:) {mustBeNumeric, mustBeNonempty}
     J2 (:,:,:) {mustBeNumeric, mustBeNonempty}
-    flipPhase (1,1) boolean = false
-    phaseOffset (1,1) double = 100/180*pi
-    flipZ (1,1) boolean = true
-    opts.Paths struct = struct()
-    opts.InfoLike struct = struct()
+    volumeOpts.flipPhase (1,1) logical = false
+    volumeOpts.phaseOffset (1,1) double = 100/180*pi
+    volumeOpts.flipZ (1,1) logical = true
+    outputOpts.Paths struct = struct()
+    outputOpts.InfoLike struct = struct()
 end
 
+flipPhase = volumeOpts.flipPhase;
+phaseOffset = volumeOpts.phaseOffset;
+flipZ = volumeOpts.flipZ;
+
 % Optional writes (no-op for empty paths)
-paths = opts.Paths;
+paths = outputOpts.Paths;
 paths = psoct.internal.paths.ensurePathField(paths, "dBI3D");
 paths = psoct.internal.paths.ensurePathField(paths, "R3D");
 paths = psoct.internal.paths.ensurePathField(paths, "O3D");
 
 infoIn = psoct.internal.nifti.defaultNiftiHeader( ...
-    opts.InfoLike, size(J1), [0.01 0.01 0.025]);
+    outputOpts.InfoLike, size(J1), [0.01 0.01 0.025]);
 writeFutures = {};
 
 % Intensity and dB backscatter

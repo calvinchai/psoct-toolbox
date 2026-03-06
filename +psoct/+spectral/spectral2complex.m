@@ -1,15 +1,16 @@
-function [Jones1_3D, Jones2_3D] = spectral2complex(filename, dispCompFile, AlineSize, BlineSize, outputPath, isRawFormat)
+function [Jones1_3D, Jones2_3D] = spectral2complex(spectralFile, spectralOpts)
 %SPECTRAL2COMPLEX Convert spectral data to complex data.
 %
-%   [Jones1_3D, Jones2_3D] = spectral2complex(filename, dispCompFile, AlineSize, BlineSize, outputPath, rawFormat)
+%   [Jones1_3D, Jones2_3D] = spectral2complex(spectralFile, spectralOpts)
 %
 %   Input
-%     filename    : Path to the spectral data file.
-%     dispCompFile: Path to the dispersion compensation file.
-%     AlineSize   : Size of the A-line (pixels of X axis).
-%     BlineSize   : Size of the B-line (pixels of Y axis).
-%     outputPath  : Path to the output file. If empty, no file is written.
-%     rawFormat   : Whether the input data is in packed 12-bit raw format.
+%     spectralFile : Path to the spectral data file.
+%     spectralOpts : Struct with fields:
+%                    - dispCompFile: Path to the dispersion compensation file.
+%                    - AlineSize   : Size of the A-line (pixels of X axis).
+%                    - BlineSize   : Size of the B-line (pixels of Y axis).
+%                    - outputPath  : Path to the output file. If empty, no file is written.
+%                    - isRawFormat : Whether input is in packed 12-bit raw format.
 %
 %   Output
 %     Jones1_3D   : Complex Jones volume for channel 1 (Aline x Bline x Depth).
@@ -18,13 +19,19 @@ function [Jones1_3D, Jones2_3D] = spectral2complex(filename, dispCompFile, Aline
 %   This function is designed to be numerically equivalent to the legacy
 %   s2c_raw implementation when called with the corresponding parameters.
 arguments
-    filename {mustBeTextScalar, mustBeNonempty}
-    dispCompFile {mustBeTextScalar} = psoct.internal.getDataFile("LSM03_mineral_oil_placecorrectionmeanall2.dat")
-    AlineSize (1,1) integer {mustBePositive} = 200
-    BlineSize (1,1) integer {mustBePositive} = 350
-    outputPath {mustBeTextScalar} = ""
-    isRawFormat (1,1) logical = false
+    spectralFile {mustBeTextScalar, mustBeNonempty}
+    spectralOpts.dispCompFile {mustBeTextScalar} = psoct.internal.getDataFile("LSM03_mineral_oil_placecorrectionmeanall2.dat")
+    spectralOpts.AlineSize (1,1) integer {mustBePositive} = 200
+    spectralOpts.BlineSize (1,1) integer {mustBePositive} = 350
+    spectralOpts.outputPath {mustBeTextScalar} = ""
+    spectralOpts.isRawFormat (1,1) logical = false
 end
+
+dispCompFile = string(spectralOpts.dispCompFile);
+AlineSize = spectralOpts.AlineSize;
+BlineSize = spectralOpts.BlineSize;
+outputPath = string(spectralOpts.outputPath);
+isRawFormat = spectralOpts.isRawFormat;
 
 outputPath = string(outputPath);
 
@@ -108,7 +115,7 @@ Jones1_3D = complex(zeros(Bline, Aline, DepthL));
 Jones2_3D = complex(zeros(Bline, Aline, DepthL));
 
 % Basic validation of input file size (best-effort check)
-fileInfo = dir(filename);
+fileInfo = dir(spectralFile);
 if ~isempty(fileInfo)
     expectedBytes = Bline * (2 * bytesPerBuffer);
     if ~isRawFormat
@@ -117,14 +124,14 @@ if ~isempty(fileInfo)
     if fileInfo.bytes < expectedBytes
         warning('spectral2complex:FileTooSmall', ...
             'Spectral file "%s" appears smaller (%d bytes) than expected (~%d bytes).', ...
-            filename, fileInfo.bytes, expectedBytes);
+            spectralFile, fileInfo.bytes, expectedBytes);
     end
 end
 
-fid = fopen(filename, 'rb');
+fid = fopen(spectralFile, 'rb');
 if fid == -1
     error('spectral2complex:FileOpenFailed', ...
-        'Could not open spectral data file "%s".', filename);
+        'Could not open spectral data file "%s".', spectralFile);
 end
 cleanupObj = onCleanup(@() fclose(fid)); %#ok<NASGU>
 

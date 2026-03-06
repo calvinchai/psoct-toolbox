@@ -1,30 +1,36 @@
-function out = vol2enface(dBI3D_vol, R3D_vol, O3D_vol, surf, enfaceOffset, enfaceDepth, zSizeUm, wavelengthUm, opts)
+function out = vol2enface(dBI3D_vol, R3D_vol, O3D_vol, surf, enfaceOpts, acquisitionOpts, outputOpts)
 % psoct.enface.vol2enface
 % Compute enface modalities from reconstructed 3D volumes and optionally
 % write each modality to disk.
 %
 %   out = psoct.enface.vol2enface(dBI3D_vol, R3D_vol, O3D_vol, surf, ...
-%       enfaceOffset, enfaceDepth, zSizeUm, wavelengthUm)
+%       enfaceOpts, acquisitionOpts, outputOpts)
 %
 % Inputs
 %   dBI3D_vol, R3D_vol, O3D_vol : 3D reconstructed volumes (X x Y x Z).
 %   surf                        : 2D surface map (X x Y), z-index per A-line.
-%   enfaceOffset                : offset below surface for the enface window. Default 0.
-%   enfaceDepth                 : depth of enface window. Default 70.
-%   zSizeUm                     : axial pixel size in micrometers.
-%   wavelengthUm                : wavelength in micrometers (for biref methods).
 %
-% Name-value options (opts.*)
-%   opts.OriMethod    : "circularMean" (default) or legacy fallback.
-%   opts.BirefMethod  : "legacy"(default),"fft","unwrap_old","unwrap_new","exp","".
-%   opts.Paths        : struct paths with fields: aip,mip,ret,ori,biref.
-%                       Non-empty paths trigger writing for computed outputs.
-%   opts.Compute      : struct booleans with fields: aip,mip,ret,ori,biref.
-%                       Missing fields default to true.
-%   opts.InfoLike     : optional NIfTI-info-like struct used as write template.
-%   opts.Save2DAs3D   : if true, write 2D outputs as X-by-Y-by-1 NIfTI.
-%   opts.SliceThicknessUm : slice thickness (um) used as PixelDimensions(3)
-%                       when Save2DAs3D is true. Default 500.
+% Enface options (enfaceOpts.*)
+%   enfaceOpts.Offset           : offset below surface for enface window. Default 0.
+%   enfaceOpts.Depth            : enface window depth. Default 70.
+%   enfaceOpts.OriMethod        : "circularMean" (default) or legacy fallback.
+%   enfaceOpts.OriMethodArgs    : reserved for future orientation method args.
+%   enfaceOpts.BirefMethod      : "legacy"(default),"fft","unwrap_old","unwrap_new","exp","".
+%   enfaceOpts.BirefMethodArgs  : reserved for future biref method args.
+%   enfaceOpts.Compute          : struct booleans with fields: aip,mip,ret,ori,biref.
+%                                 Missing fields default to true.
+%   enfaceOpts.Save2DAs3D       : if true, write 2D outputs as X-by-Y-by-1 NIfTI.
+%
+% Acquisition options (acquisitionOpts.*)
+%   acquisitionOpts.ZSizeUm          : axial pixel size in micrometers.
+%   acquisitionOpts.WavelengthUm     : wavelength in micrometers (for biref methods).
+%   acquisitionOpts.SliceThicknessUm : slice thickness (um) used as PixelDimensions(3)
+%                                      when Save2DAs3D is true. Default 500.
+%
+% Output options (outputOpts.*)
+%   outputOpts.Paths    : struct paths with fields: aip,mip,ret,ori,biref,surf.
+%                         Non-empty paths trigger writing for computed outputs.
+%   outputOpts.InfoLike : optional NIfTI-info-like struct used as write template.
 %
 % Output
 %   out.aip/out.mip/out.ret/out.ori/out.biref : computed maps (or []).
@@ -40,18 +46,29 @@ arguments
     R3D_vol (:,:,:) {mustBeNumeric, mustBeNonempty}
     O3D_vol (:,:,:) {mustBeNumeric, mustBeNonempty}
     surf (:,:) {mustBeNumeric, mustBeNonempty}
-    enfaceOffset (1,1) {mustBeNumeric, mustBeFinite} = 0
-    enfaceDepth (1,1) {mustBeNumeric, mustBeFinite} = 70
-    zSizeUm (1,1) {mustBeNumeric, mustBeFinite} = 2.5
-    wavelengthUm (1,1) {mustBeNumeric, mustBeFinite} = 0.0013
-    opts.OriMethod = "circularMean"
-    opts.BirefMethod = "legacy"
-    opts.Paths struct = struct()
-    opts.Compute struct = struct()
-    opts.InfoLike struct = struct()
-    opts.Save2DAs3D (1,1) logical = false
-    opts.SliceThicknessUm (1,1) {mustBeNumeric, mustBeFinite} = 500
+    enfaceOpts.Offset (1,1) {mustBeNumeric, mustBeFinite} = 0
+    enfaceOpts.Depth (1,1) {mustBeNumeric, mustBeFinite} = 70
+    enfaceOpts.OriMethod = "circularMean"
+    enfaceOpts.OriMethodArgs = struct()
+    enfaceOpts.BirefMethod = "legacy"
+    enfaceOpts.BirefMethodArgs = struct()
+    enfaceOpts.Compute struct = struct()
+    enfaceOpts.Save2DAs3D (1,1) logical = false
+    acquisitionOpts.ZSizeUm (1,1) {mustBeNumeric, mustBeFinite} = 2.5
+    acquisitionOpts.WavelengthUm (1,1) {mustBeNumeric, mustBeFinite} = 0.0013
+    acquisitionOpts.SliceThicknessUm (1,1) {mustBeNumeric, mustBeFinite} = 500
+    outputOpts.Paths struct = struct()
+    outputOpts.InfoLike struct = struct()
 end
+
+enfaceOffset = enfaceOpts.Offset;
+enfaceDepth = enfaceOpts.Depth;
+zSizeUm = acquisitionOpts.ZSizeUm;
+wavelengthUm = acquisitionOpts.WavelengthUm;
+oriMethod = string(enfaceOpts.OriMethod);
+birefMethod = string(enfaceOpts.BirefMethod);
+oriMethodArgs = enfaceOpts.OriMethodArgs; %#ok<NASGU>
+birefMethodArgs = enfaceOpts.BirefMethodArgs; %#ok<NASGU>
 
 [nx, ny, nz] = size(dBI3D_vol);
 if ~isequal(size(R3D_vol), [nx ny nz]) || ~isequal(size(O3D_vol), [nx ny nz])
@@ -67,18 +84,19 @@ end
 surf = max(1, min(nz, round(surf)));
 
 modalities = ["aip", "mip", "ret", "ori", "biref"];
-paths = opts.Paths;
-compute = opts.Compute;
+paths = outputOpts.Paths;
+compute = enfaceOpts.Compute;
 for k = 1:numel(modalities)
     fieldName = modalities(k);
     paths = psoct.internal.paths.ensurePathField(paths, fieldName);
     compute = ensureComputeField(compute, fieldName);
 end
+paths = psoct.internal.paths.ensurePathField(paths, "surf");
 
 infoIn = psoct.internal.nifti.defaultNiftiHeader( ...
-    opts.InfoLike, size(dBI3D_vol), [0.01 0.01 zSizeUm/1000]);
-info2D = shrinkHeader(infoIn, opts.Save2DAs3D, opts.SliceThicknessUm);
-writeOpts = struct("Expand2DTo3D", opts.Save2DAs3D);
+    outputOpts.InfoLike, size(dBI3D_vol), [0.01 0.01 zSizeUm/1000]);
+info2D = shrinkHeader(infoIn, enfaceOpts.Save2DAs3D, acquisitionOpts.SliceThicknessUm);
+writeOpts = struct("Expand2DTo3D", enfaceOpts.Save2DAs3D);
 
 out = struct();
 out.aip = [];
@@ -86,6 +104,7 @@ out.mip = [];
 out.ret = [];
 out.ori = [];
 out.biref = [];
+out.surf = surf;
 writeFutures = {};
 
 if compute.aip
@@ -107,7 +126,6 @@ if compute.ret
 end
 
 if compute.ori
-    oriMethod = string(opts.OriMethod);
     if oriMethod == "circularMean"
         out.ori = psoct.enface.stat.enfaceCircularMean(O3D_vol, surf, enfaceOffset, enfaceDepth);
     else
@@ -127,7 +145,6 @@ if compute.biref
             "wavelengthUm must be provided and > 0 (micrometers) to compute biref.");
     end
 
-    birefMethod = string(opts.BirefMethod);
     switch birefMethod
         case {"legacy",""}
             out.biref = psoct.enface.biref.fitLinear(R3D_vol, surf, enfaceOffset, enfaceDepth, zSizeUm, wavelengthUm);
@@ -146,6 +163,9 @@ if compute.biref
     writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
         psoct.internal.nifti.writeNiftiIfPath(paths.biref, out.biref, info2D, writeOpts));
 end
+
+writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
+    psoct.internal.nifti.writeNiftiIfPath(paths.surf, out.surf, info2D, writeOpts));
 
 psoct.internal.nifti.waitWriteFutures(writeFutures);
 
