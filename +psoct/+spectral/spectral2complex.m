@@ -21,8 +21,8 @@ function [Jones1_3D, Jones2_3D] = spectral2complex(spectralFile, spectralOpts)
 arguments
     spectralFile {mustBeTextScalar, mustBeNonempty}
     spectralOpts.dispCompFile {mustBeTextScalar} = psoct.internal.getDataFile("LSM03_mineral_oil_placecorrectionmeanall2.dat")
-    spectralOpts.AlineSize (1,1) integer {mustBePositive} = 200
-    spectralOpts.BlineSize (1,1) integer {mustBePositive} = 350
+    spectralOpts.AlineSize (1,1) int32 {mustBeInteger, mustBePositive} = 200
+    spectralOpts.BlineSize (1,1) int32 {mustBeInteger, mustBePositive} = 350
     spectralOpts.outputPath {mustBeTextScalar} = ""
     spectralOpts.isRawFormat (1,1) logical = false
 end
@@ -221,8 +221,8 @@ else
         error('spectral2complex:UnexpectedEOF', ...
             'Reached end of file while reading raw buffers for B-line %d.', blineIndex);
     end
-    data1 = unpack12bits(raw1);
-    data2 = unpack12bits(raw2);
+    data1 = psoct.spectral.unpack12bits(raw1);
+    data2 = psoct.spectral.unpack12bits(raw2);
 end
 
 if numel(data1) ~= params.numSamplesPerBuffer || numel(data2) ~= params.numSamplesPerBuffer
@@ -258,8 +258,8 @@ OriginalBuffer1 = MeanScan1(Start1:OriginalLineLength1 - 1 + Start1, :);
 OriginalBuffer2 = MeanScan2(Start2:OriginalLineLength2 - 1 + Start2, :);
 
 % Zero padding
-ZeroPaddedBuffer1 = ZeroPadBuffer(OriginalBuffer1, PaddingFactor);
-ZeroPaddedBuffer2 = ZeroPadBuffer(OriginalBuffer2, PaddingFactor);
+ZeroPaddedBuffer1 = psoct.legacy.ZeroPadBuffer(OriginalBuffer1, PaddingFactor);
+ZeroPaddedBuffer2 = psoct.legacy.ZeroPadBuffer(OriginalBuffer2, PaddingFactor);
 
 % Interpolation onto k-space grid
 InterpolatedBuffer1 = interp1(params.Wavelengths_l, ZeroPaddedBuffer1, ...
