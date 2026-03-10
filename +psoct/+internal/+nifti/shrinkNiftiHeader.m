@@ -26,7 +26,7 @@ function infoLike = shrinkNiftiHeader(V, infoIn, pixelDimensions, enfaceVolumeOp
     end
     % convert um to mm 
     pixelDimensions = pixelDimensions / 1000;
-    
+
     fullSize = size(V);
     nDimsFull = ndims(V);
     hasChannel = enfaceVolumeOpts.channelDimension && nDimsFull > 2;
@@ -54,7 +54,7 @@ function infoLike = shrinkNiftiHeader(V, infoIn, pixelDimensions, enfaceVolumeOp
     % 2D case
     infoLike.ImageSize = [fullSize(1:2), 1];
     infoLike.PixelDimensions = pixelDimensions(1:2);
-    if channelDimension
+    if enfaceVolumeOpts.channelDimension
         infoLike.ImageSize(4) = fullSize(3);
         infoLike.PixelDimensions(4) = 1;
     end
