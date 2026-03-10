@@ -38,17 +38,27 @@ function future = writeNiftiIfPath(pathStr, data, infoLike, options)
     infoOut.Datatype     = dtype;
     infoOut.BitsPerPixel = bpp;
     infoOut.Description = '';
-    isgz = endsWith(string(pathStr), ".nii.gz");
+    infoOut.Version = 'NIfTI1-1';
+
     pool = [];
     if exist("gcp", "file") == 2
         pool = gcp("nocreate");
     end
 
-    if isempty(pool)
-        localWriteNifti(data, pathStr, infoOut, isgz);
-        future = [];
+    % Use parfeval only when:
+    % - there is a pool, AND
+    % - (the pool is a ProcessPool OR the path does not end with ".gz").
+    %
+    % If there is no pool, or if the pool is not process-based and the
+    % path ends with ".gz", fall back to synchronous local write.
+    useParfeval = ~isempty(pool) && ...
+        (isa(pool, "parallel.pool.ProcessPool") || ~endsWith(pathStr, ".gz"));
+
+    if useParfeval
+        future = parfeval(pool, @localWriteNifti, 0, data, pathStr, infoOut);
     else
-        future = parfeval(pool, @localWriteNifti, 0, data, pathStr, infoOut, isgz);
+        localWriteNifti(data, pathStr, infoOut);
+        future = [];
     end
 end
 
@@ -70,6 +80,9 @@ function [dtype, bpp, dtcode] = class2niftiMeta(cls)
     end
 end
 
-function localWriteNifti(data, pathStr, infoOut, isgz)
-    niftiwrite(data, pathStr, infoOut, "Compressed", isgz);
+function localWriteNifti(data, pathStr, infoOut)
+    % Let MATLAB handle compression automatically based on file extension.
+    % If the filename ends with ".nii.gz", `niftiwrite` will gzip it without
+    % needing the "Compressed" name-value pair.
+    niftiwrite(data, pathStr, infoOut);
 end

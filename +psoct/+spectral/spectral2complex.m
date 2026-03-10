@@ -136,10 +136,11 @@ end
 cleanupObj = onCleanup(@() fclose(fid)); %#ok<NASGU>
 
 for blineIndex = 1:Bline
-    if mod(blineIndex, 50) == 0
-        disp([' bline ' num2str(blineIndex)]);
+    if mod(blineIndex, 10) == 0 || blineIndex == Bline
+        pct = 100 * blineIndex / Bline;
+        fprintf('\rProcessing bline: %d / %d (%.1f%%)', blineIndex, Bline, pct);
     end
-
+    
     % Read raw wavelength buffers for both polarization channels
     [WavelengthBuffer1, WavelengthBuffer2] = readBlineBuffers( ...
         fid, blineIndex, params, isRawFormat, HEADER_BYTES);

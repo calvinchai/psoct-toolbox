@@ -14,7 +14,7 @@ arguments
 end
 
 if isempty(fieldnames(infoIn))
-    infoOut = struct();
+    infoOut = images.internal.nifti.niftiImage(images.internal.nifti.niftiImage.niftiDefaultHeader([],'Version','NIfTI1')).simplifyStruct();
     infoOut.ImageSize = imageSize;
     infoOut.PixelDimensions = pixelDimensions;
 else
