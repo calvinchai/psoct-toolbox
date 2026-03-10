@@ -1,4 +1,4 @@
-function outputOpts = validateOutputOpts(outputOpts)
+function outputOpts = normalizeOutputOpts(outputOpts)
     nargs = namedargs2cell(outputOpts);
     outputOpts = iNormalizeOutputOpts(nargs{:});
 end
@@ -8,7 +8,13 @@ function nargs = iNormalizeOutputOpts(nargs)
         nargs.Paths struct = struct()
         nargs.InfoLike struct = defaultNiftiHeader()
     end
-    modalities = ["complex", "dBI3D", "R3D", "O3D", "surf", "aip", "mip", "ret", "ori", "biref"];
+    modalities = ["complex", ...
+                  "dBI3D", "R3D", "O3D",
+                  "surf", "aip", "mip", "ret", "ori", "biref", ...
+                  "inplaneTiff", "inplaneJpg", "inplaneNii", ...
+                  "thruplaneTiff", "thruplaneJpg", "thruplaneNii", ...
+                  "dataMat", "axisNii", "axisJpg", "axisNiiNorm", ...
+                  "registeredBirefNii"];
     for k = 1:numel(modalities)
         nargs.Paths = ensurePathField(nargs.Paths, modalities(k));
     end

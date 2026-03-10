@@ -169,9 +169,9 @@ if outputPath ~= ""
 
     fprintf('Saving output to: %s\n', outputPath);
     Jstack_all = single(flip(Jstack_all, 3));
-    %psoct.internal.nifti.writeNiftiIfPath(outputPath, Jstack_all, infoIn);
-
-    niftiwrite(Jstack_all, outputPath);
+    futures = psoct.internal.nifti.appendWriteFuture(futures, ...
+        psoct.internal.nifti.writeNiftiIfPath(outputPath, Jstack_all, outputOpts.InfoLike));
+    psoct.internal.nifti.waitWriteFutures(futures);
 end
 
 end

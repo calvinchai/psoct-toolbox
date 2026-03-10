@@ -1,4 +1,4 @@
-function spectralOpts = validateSpectralOpts(spectralOpts)
+function spectralOpts = normalizeSpectralOpts(spectralOpts)
     nargs = namedargs2cell(spectralOpts);
     spectralOpts = iNormalizeSpectralOpts(nargs{:});
 end

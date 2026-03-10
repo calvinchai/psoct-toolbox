@@ -79,6 +79,7 @@ surf = max(1, min(nz, round(surf)));
 
 paths = outputOpts.Paths;
 infoIn = outputOpts.InfoLike;
+compute = enfaceOpts.Compute;
 
 out = struct();
 out.aip = [];
@@ -89,8 +90,7 @@ out.biref = [];
 out.surf = surf;
 writeFutures = {};
 
-writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-    psoct.internal.nifti.writeNiftiIfPath(paths.surf, out.surf, info2D));
+writeFutures = writeEnfaceModality(writeFutures, paths.surf, out.surf, infoIn, acquisitionOpts.PixelDimensionsUm, enfaceOpts);
 
 if compute.aip
     out.aip = psoct.enface.stat.enfaceMean(dBI3D_vol, surf, enfaceOffset, enfaceDepth);
