@@ -1,21 +1,14 @@
-function future = writeNiftiIfPath(pathStr, data, infoLike, options)
+function future = writeNiftiIfPath(pathStr, data, infoLike)
 % psoct.internal.nifti.writeNiftiIfPath
 % Write NIfTI if path is non-empty, with header/datatype fixups.
-%
-% options.Expand2DTo3D (logical, default false):
-%   If true, 2D data is written as X-by-Y-by-1.
-
+% 
     arguments
-        pathStr
-        data
+        pathStr {mustBeTextScalar}
+        data {mustBeNumeric}
         infoLike
-        options.Expand2DTo3D (1,1) logical = false
     end
-
-    if strlength(pathStr) == 0 || isempty(pathStr)
-        future =[]; 
-        return; 
-    end
+    future = [];
+    if strlength(pathStr) == 0 || isempty(pathStr), return, end
     % ---- Normalize class (NIfTI has no logical) ----
     if islogical(data)
         data = uint8(data);  % 0/1
@@ -55,9 +48,9 @@ function future = writeNiftiIfPath(pathStr, data, infoLike, options)
         (isa(pool, "parallel.pool.ProcessPool") || ~endsWith(pathStr, ".gz"));
 
     if useParfeval
-        future = parfeval(pool, @localWriteNifti, 0, data, pathStr, infoOut);
+        future = parfeval(pool, @niftiwrite, 0, data, pathStr, infoOut);
     else
-        localWriteNifti(data, pathStr, infoOut);
+        niftiwrite(data, pathStr, infoOut);
         future = [];
     end
 end
@@ -78,11 +71,4 @@ function [dtype, bpp, dtcode] = class2niftiMeta(cls)
             error("psoct.internal.nifti.writeNiftiIfPath:UnsupportedClass", ...
                 "Unsupported data class for NIfTI: %s", cls);
     end
-end
-
-function localWriteNifti(data, pathStr, infoOut)
-    % Let MATLAB handle compression automatically based on file extension.
-    % If the filename ends with ".nii.gz", `niftiwrite` will gzip it without
-    % needing the "Compressed" name-value pair.
-    niftiwrite(data, pathStr, infoOut);
 end

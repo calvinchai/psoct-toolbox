@@ -1,4 +1,4 @@
-function [Jones1_3D, Jones2_3D] = spectral2complex(spectralFile, spectralOpts)
+function [Jones1_3D, Jones2_3D] = spectral2complex(spectralFile, spectralOpts, outputOpts)
 %SPECTRAL2COMPLEX Convert spectral data to complex data.
 %
 %   [Jones1_3D, Jones2_3D] = spectral2complex(spectralFile, spectralOpts)
@@ -9,8 +9,11 @@ function [Jones1_3D, Jones2_3D] = spectral2complex(spectralFile, spectralOpts)
 %                    - dispCompFile: Path to the dispersion compensation file.
 %                    - AlineSize   : Size of the A-line (pixels of X axis).
 %                    - BlineSize   : Size of the B-line (pixels of Y axis).
-%                    - outputPath  : Path to the output file. If empty, no file is written.
 %                    - isRawFormat : Whether input is in packed 12-bit raw format.
+%     outputOpts   : Struct with fields:
+%                    - Paths       : Struct with fields:
+%                      - complex : Path to the output complex NIfTI file.
+%                    - InfoLike    : NIfTI-info-like struct used as write template.
 %
 %   Output
 %     Jones1_3D   : Complex Jones volume for channel 1 (Aline x Bline x Depth).
@@ -20,19 +23,16 @@ function [Jones1_3D, Jones2_3D] = spectral2complex(spectralFile, spectralOpts)
 %   s2c_raw implementation when called with the corresponding parameters.
 arguments
     spectralFile {mustBeTextScalar, mustBeNonempty}
-    spectralOpts.dispCompFile {mustBeTextScalar} = psoct.internal.getDataFile("LSM03_mineral_oil_placecorrectionmeanall2.dat")
-    spectralOpts.AlineSize (1,1) int32 {mustBeInteger, mustBePositive} = 200
-    spectralOpts.BlineSize (1,1) int32 {mustBeInteger, mustBePositive} = 350
-    spectralOpts.outputPath {mustBeTextScalar} = ""
-    spectralOpts.isRawFormat (1,1) logical = false
+    spectralOpts struct = struct()
+    outputOpts struct = struct()
 end
 
-% spectralOpts = psoct.internal.validator.spectralOpts(spectralOpts);
+spectralOpts = psoct.internal.opts.normalizeSpectralOpts(spectralOpts);
+outputOpts = psoct.internal.opts.normalizeOutputOpts(outputOpts);
 
 dispCompFile = string(spectralOpts.dispCompFile);
 AlineSize = spectralOpts.AlineSize;
 BlineSize = spectralOpts.BlineSize;
-outputPath = string(spectralOpts.outputPath);
 isRawFormat = spectralOpts.isRawFormat;
 
 % Constants describing the acquisition format.
@@ -159,6 +159,7 @@ end % for blineIndex
 Jones1_3D = permute(Jones1_3D, [2 1 3]);
 Jones2_3D = permute(Jones2_3D, [2 1 3]);
 
+outputPath = outputOpts.Paths.complex;
 if outputPath ~= ""
     % real_J1: Bline x Aline x Depth  -> we'll stack along dim 1,
     % so cat(1, real, imag) -> (2*Bline) x Aline x Depth

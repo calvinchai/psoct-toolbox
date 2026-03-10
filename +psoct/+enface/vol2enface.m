@@ -46,24 +46,18 @@ arguments
     R3D_vol (:,:,:) {mustBeNumeric, mustBeNonempty}
     O3D_vol (:,:,:) {mustBeNumeric, mustBeNonempty}
     surf (:,:) {mustBeNumeric, mustBeNonempty}
-    enfaceOpts.Offset (1,1) {mustBeNumeric, mustBeFinite} = 0
-    enfaceOpts.Depth (1,1) {mustBeNumeric, mustBeFinite} = 70
-    enfaceOpts.OriMethod = "circularMean"
-    enfaceOpts.OriMethodArgs = struct()
-    enfaceOpts.BirefMethod = "legacy"
-    enfaceOpts.BirefMethodArgs = struct()
-    enfaceOpts.Compute struct = struct()
-    enfaceOpts.Save2DAs3D (1,1) logical = false
-    acquisitionOpts.ZSizeUm (1,1) {mustBeNumeric, mustBeFinite} = 2.5
-    acquisitionOpts.WavelengthUm (1,1) {mustBeNumeric, mustBeFinite} = 0.0013
-    acquisitionOpts.SliceThicknessUm (1,1) {mustBeNumeric, mustBeFinite} = 500
-    outputOpts.Paths struct = struct()
-    outputOpts.InfoLike struct = struct()
+    enfaceOpts struct = struct()
+    acquisitionOpts struct = struct()
+    outputOpts struct = struct()
 end
+
+enfaceOpts = psoct.internal.opts.normalizeEnfaceOpts(enfaceOpts);
+acquisitionOpts = psoct.internal.opts.normalizeAcquisitionOpts(acquisitionOpts);
+outputOpts = psoct.internal.opts.normalizeOutputOpts(outputOpts);
 
 enfaceOffset = enfaceOpts.Offset;
 enfaceDepth = enfaceOpts.Depth;
-zSizeUm = acquisitionOpts.ZSizeUm;
+zSizeUm = acquisitionOpts.PixelDimensionsUm(3);
 wavelengthUm = acquisitionOpts.WavelengthUm;
 oriMethod = string(enfaceOpts.OriMethod);
 birefMethod = string(enfaceOpts.BirefMethod);
@@ -83,20 +77,8 @@ end
 % Clamp surface indices for downstream window-based operations.
 surf = max(1, min(nz, round(surf)));
 
-modalities = ["aip", "mip", "ret", "ori", "biref"];
 paths = outputOpts.Paths;
-compute = enfaceOpts.Compute;
-for k = 1:numel(modalities)
-    fieldName = modalities(k);
-    paths = psoct.internal.paths.ensurePathField(paths, fieldName);
-    compute = ensureComputeField(compute, fieldName);
-end
-paths = psoct.internal.paths.ensurePathField(paths, "surf");
-
-infoIn = psoct.internal.nifti.defaultNiftiHeader( ...
-    size(dBI3D_vol), [0.01 0.01 zSizeUm/1000], outputOpts.InfoLike);
-info2D = shrinkHeader(infoIn, enfaceOpts.Save2DAs3D, acquisitionOpts.SliceThicknessUm);
-writeOpts = struct("Expand2DTo3D", enfaceOpts.Save2DAs3D);
+infoIn = outputOpts.InfoLike;
 
 out = struct();
 out.aip = [];
@@ -108,24 +90,21 @@ out.surf = surf;
 writeFutures = {};
 
 writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-    psoct.internal.nifti.writeNiftiIfPath(paths.surf, out.surf, info2D, "Expand2DTo3D", enfaceOpts.Save2DAs3D));
+    psoct.internal.nifti.writeNiftiIfPath(paths.surf, out.surf, info2D));
 
 if compute.aip
     out.aip = psoct.enface.stat.enfaceMean(dBI3D_vol, surf, enfaceOffset, enfaceDepth);
-    writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-        psoct.internal.nifti.writeNiftiIfPath(paths.aip, out.aip, info2D, "Expand2DTo3D", enfaceOpts.Save2DAs3D));
+    writeFutures = writeEnfaceModality(writeFutures, paths.aip, out.aip, infoIn, acquisitionOpts.PixelDimensionsUm, enfaceOpts);
 end
 
 if compute.mip
     out.mip = psoct.enface.stat.enfaceMax(dBI3D_vol, surf, enfaceOffset, enfaceDepth);
-    writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-        psoct.internal.nifti.writeNiftiIfPath(paths.mip, out.mip, info2D, "Expand2DTo3D", enfaceOpts.Save2DAs3D));
+    writeFutures = writeEnfaceModality(writeFutures, paths.mip, out.mip, infoIn, acquisitionOpts.PixelDimensionsUm, enfaceOpts);
 end
 
 if compute.ret
     out.ret = psoct.enface.stat.enfaceMean(R3D_vol, surf, enfaceOffset, enfaceDepth);
-    writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-        psoct.internal.nifti.writeNiftiIfPath(paths.ret, out.ret, info2D, "Expand2DTo3D", enfaceOpts.Save2DAs3D));
+    writeFutures = writeEnfaceModality(writeFutures, paths.ret, out.ret, infoIn, acquisitionOpts.PixelDimensionsUm, enfaceOpts);
 end
 
 if compute.ori
@@ -134,9 +113,7 @@ if compute.ori
     else
         out.ori = psoct.enface.stat.enfaceMean(O3D_vol, surf, enfaceOffset, enfaceDepth);
     end
-    writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-        psoct.internal.nifti.writeNiftiIfPath(paths.ori, out.ori, info2D, "Expand2DTo3D", enfaceOpts.Save2DAs3D));
-end
+    writeFutures = writeEnfaceModality(writeFutures, paths.ori, out.ori, infoIn, acquisitionOpts.PixelDimensionsUm, enfaceOpts);
 
 if compute.biref
     if ~(isscalar(zSizeUm) && zSizeUm > 0)
@@ -157,14 +134,13 @@ if compute.biref
             out.biref = psoct.enface.biref.unwrapOld(dBI3D_vol, R3D_vol, O3D_vol, surf, enfaceOffset, enfaceDepth, zSizeUm, wavelengthUm);
         case "unwrap_new"
             out.biref = psoct.enface.biref.unwrapNew(dBI3D_vol, R3D_vol, O3D_vol, surf, enfaceOffset, enfaceDepth, zSizeUm, wavelengthUm);
-        case "exp"
+        case "unwrap_exp"
             out.biref = psoct.enface.biref.unwrapExp(dBI3D_vol, R3D_vol, O3D_vol, surf, enfaceOffset, enfaceDepth, zSizeUm, wavelengthUm);
         otherwise
             error("psoct.enface.vol2enface:UnknownBirefMethod", ...
                 "Unknown birefMethod ""%s"".", birefMethod);
     end
-    writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-        psoct.internal.nifti.writeNiftiIfPath(paths.biref, out.biref, info2D, "Expand2DTo3D", enfaceOpts.Save2DAs3D));
+    writeFutures = writeEnfaceModality(writeFutures, paths.biref, out.biref, infoIn, acquisitionOpts.PixelDimensionsUm, enfaceOpts);
 end
 
 
@@ -175,59 +151,13 @@ out.compute = compute;
 
 end
 
-function compute = ensureComputeField(compute, fieldName)
-if ~isfield(compute, fieldName) || isempty(compute.(fieldName))
-    compute.(fieldName) = true;
-else
-    compute.(fieldName) = logical(compute.(fieldName));
-end
-end
-
-function info2 = shrinkHeader(infoIn, expand2DTo3D, sliceThicknessUm)
-info2 = infoIn;
-imgSize = infoIn.ImageSize;
-if numel(imgSize) < 2
-    error("psoct.enface.vol2enface:BadInfoLike", ...
-        "InfoLike.ImageSize must contain at least two dimensions.");
-end
-
-if expand2DTo3D
-    info2.ImageSize = [imgSize(1:2), 1];
-else
-    info2.ImageSize = imgSize(1:2);
-end
-
-if isfield(info2, "PixelDimensions") && numel(info2.PixelDimensions) >= 2
-    pd = info2.PixelDimensions(1:2);
-else
-    pd = [1 1];
-end
-if expand2DTo3D
-    pd(3) = sliceThicknessUm / 1000;
-end
-info2.PixelDimensions = pd;
-
-if isfield(info2, "Raw") && isfield(info2.Raw, "dim")
-    if expand2DTo3D
-        info2.Raw.dim(1) = 3;
-        info2.Raw.dim(2) = imgSize(1);
-        info2.Raw.dim(3) = imgSize(2);
-        info2.Raw.dim(4) = 1;
-    else
-        info2.Raw.dim(1) = 2;
-        info2.Raw.dim(2) = imgSize(1);
-        info2.Raw.dim(3) = imgSize(2);
-        info2.Raw.dim(4) = 1;
+function futures = writeEnfaceModality(futures, path, data, infoLike, pixelDimensions, enfaceOpts)
+    shrinkedHeader = psoct.internal.nifti.shrinkNiftiHeader(data, infoLike, pixelDimensions, "Expand2DTo3D", enfaceOpts.Save2DAs3D, "channelDimension", false, "SliceThicknessUm", acquisitionOpts.SliceThicknessUm);
+    if enfaceOpts.Save2DAs3D
+        data = data(:,:,1);
     end
-    if isfield(info2.Raw, "pixdim")
-        info2.Raw.pixdim(1) = 1;
-        info2.Raw.pixdim(2) = info2.PixelDimensions(1);
-        info2.Raw.pixdim(3) = info2.PixelDimensions(2);
-        if expand2DTo3D
-            info2.Raw.pixdim(4) = info2.PixelDimensions(3);
-        else
-            info2.Raw.pixdim(4) = 1;
-        end
-    end
+    futures = psoct.internal.nifti.appendWriteFuture(futures, ...
+        psoct.internal.nifti.writeNiftiIfPath(path, data, shrinkedHeader));
 end
+
 end

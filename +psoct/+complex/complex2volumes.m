@@ -7,9 +7,9 @@ function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(J1, J2, volumeOpts, out
 % orientation (O3D_vol) volumes.
 %
 % OPTIONAL:
-%   volumeOpts.flipPhase   : boolean, flip the phase of the optic axis orientation (default false).
-%   volumeOpts.phaseOffset : scalar, phase offset in radians (default 100/180*pi).
-%   volumeOpts.flipZ       : boolean, flip the volume along the z-axis (default true).
+%   volumeOpts.flipPhase   : boolean, flip the phase of the optic axis orientation.
+%   volumeOpts.phaseOffset : scalar, phase offset in radians.
+%   volumeOpts.flipZ       : boolean, flip the volume along the z-axis.
 %   outputOpts.Paths       : struct with optional fields dBI3D, R3D, O3D.
 %                            Non-empty path writes the corresponding output volume.
 %   outputOpts.InfoLike    : optional NIfTI-info-like struct used as write template.
@@ -21,25 +21,20 @@ function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(J1, J2, volumeOpts, out
 arguments
     J1 (:,:,:) {mustBeNumeric, mustBeNonempty}
     J2 (:,:,:) {mustBeNumeric, mustBeNonempty}
-    volumeOpts.flipPhase (1,1) logical = false
-    volumeOpts.phaseOffset (1,1) double = 100/180*pi
-    volumeOpts.flipZ (1,1) logical = true
-    outputOpts.Paths struct = struct()
-    outputOpts.InfoLike struct = struct()
+    volumeOpts struct = struct()
+    outputOpts struct = struct()
 end
+
+volumeOpts = psoct.internal.opts.normalizeVolumeOpts(volumeOpts);
+outputOpts = psoct.internal.opts.normalizeOutputOpts(outputOpts);
 
 flipPhase = volumeOpts.flipPhase;
 phaseOffset = volumeOpts.phaseOffset;
 flipZ = volumeOpts.flipZ;
 
-% Optional writes (no-op for empty paths)
 paths = outputOpts.Paths;
-paths = psoct.internal.paths.ensurePathField(paths, "dBI3D");
-paths = psoct.internal.paths.ensurePathField(paths, "R3D");
-paths = psoct.internal.paths.ensurePathField(paths, "O3D");
 
-infoIn = psoct.internal.nifti.defaultNiftiHeader( ...
-    size(J1), [0.01 0.01 0.0025], outputOpts.InfoLike);
+infoIn = outputOpts.InfoLike;
 writeFutures = {};
 
 % Intensity and dB backscatter
