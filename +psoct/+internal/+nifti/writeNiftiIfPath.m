@@ -38,7 +38,7 @@ function future = writeNiftiIfPath(pathStr, data, infoLike, options)
     infoOut.Datatype     = dtype;
     infoOut.BitsPerPixel = bpp;
     infoOut.Description = '';
-    infoOut.Version = 'NIfTI1-1';
+    infoOut.Version = 'NIfTI1';
 
     pool = [];
     if exist("gcp", "file") == 2
