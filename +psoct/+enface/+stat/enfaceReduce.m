@@ -35,7 +35,7 @@ end
 enfaceMap = zeros(nx, ny, 'single');
 for x = 1:nx
     for y = 1:ny
-        z1 = max(1, surfaceMap(x, y) + enfaceOffset);
+        z1 = min(nz, max(1, surfaceMap(x, y) + enfaceOffset));
         z2 = min(nz, z1 + enfaceDepth);
         vals = squeeze(vol(x, y, z1:z2));
         enfaceMap(x, y) = reducer(vals);

@@ -1,13 +1,19 @@
-function surf = gradientThreshold(inten, n=20, threshold=55, windowSize=5, kernelSize=5)
+function surf = gradientThreshold(inten, n, threshold, windowSize, kernelSize)
 %GRADIENTTHRESHOLD Gradient surface method with leading-threshold check.
 %
-%   surf = psoct.surface.gradientThreshold(inten, n=20, threshold=55, windowSize=5, kernelSize=5)
+%   surf = psoct.surface.gradientThreshold(inten, n, threshold, windowSize, kernelSize)
 %
 %   If the mean of the first n pixels of an A-line is >= threshold, the
 %   surface is set to the first pixel index where intensity >= threshold.
 %   Otherwise, the method falls back to the gradient argmax approach used
 %   by psoct.surface.gradient.
-
+    arguments
+        inten (:,:,:) {mustBeNumeric, mustBeNonempty}
+        n (1,1) double {mustBeInteger, mustBePositive} = 20
+        threshold (1,1) double {mustBeInteger, mustBePositive} = 55
+        windowSize (1,1) double {mustBeInteger, mustBePositive} = 5
+        kernelSize (1,1) double {mustBeInteger, mustBePositive} = 5
+    end
     [nx, ny, ~] = size(inten);
 
     w  = windowSize;

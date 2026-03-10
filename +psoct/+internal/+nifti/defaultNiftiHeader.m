@@ -1,16 +1,16 @@
-function infoOut = defaultNiftiHeader(infoIn, imageSize, pixelDimensions)
+function infoOut = defaultNiftiHeader(imageSize, pixelDimensions, infoIn)
 % psoct.internal.nifti.defaultNiftiHeader
 % Return infoIn when provided, otherwise a minimal default NIfTI header.
 %
 % Inputs:
-%   infoIn          : NIfTI-info-like struct (empty struct triggers default).
-%   imageSize       : image size for the default header.
-%   pixelDimensions : voxel size for the default header.
+%   imageSize       : image size for the default header.    (required)
+%   pixelDimensions : voxel size for the default header.    (optional)
+%   infoIn          : NIfTI-info-like struct (empty struct triggers default). (optional)
 
 arguments
-    infoIn struct = struct()
     imageSize {mustBeNumeric, mustBeNonempty}
-    pixelDimensions {mustBeNumeric, mustBeNonempty}
+    pixelDimensions {mustBeNumeric, mustBeNonempty} = [0.01 0.01 0.0025]
+    infoIn struct = struct()
 end
 
 if isempty(fieldnames(infoIn))

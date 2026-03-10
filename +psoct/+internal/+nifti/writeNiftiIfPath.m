@@ -12,66 +12,32 @@ function future = writeNiftiIfPath(pathStr, data, infoLike, options)
         options.Expand2DTo3D (1,1) logical = false
     end
 
-    if strlength(string(pathStr)) == 0 || isempty(pathStr)
-        future = [];
-        return;
+    if strlength(pathStr) == 0 || isempty(pathStr)
+        future =[]; 
+        return; 
     end
-
-    % NIfTI does not support logical values directly.
+    % ---- Normalize class (NIfTI has no logical) ----
     if islogical(data)
-        data = uint8(data);
+        data = uint8(data);  % 0/1
     end
-
-    if options.Expand2DTo3D && ismatrix(data)
-        data = reshape(data, size(data, 1), size(data, 2), 1);
-    end
-
+    % ---- Build output header from input ----
     infoOut = infoLike;
-
-    % Dimension fixups.
-    sz = size(data);
-    nDims = numel(sz);
+    % Dimension fixups
+    sz    = size(data);
+    nDims = ndims(data);
     infoOut.ImageSize = sz;
-
-    % PixelDimensions length must match nDims.
-    if isfield(infoOut, "PixelDimensions")
+    % PixelDimensions length must match dims
+    if isfield(infoOut, 'PixelDimensions')
         pd = infoOut.PixelDimensions;
-        if numel(pd) < nDims
-            pd(end+1:nDims) = 1;
-        end
-        if numel(pd) > nDims
-            pd = pd(1:nDims);
-        end
+        if numel(pd) < nDims, pd(end+1:nDims) = 1; end
+        if numel(pd) > nDims, pd = pd(1:nDims); end
         infoOut.PixelDimensions = pd;
     end
-
-    % Datatype/BitsPerPixel must match class(data).
-    [dtype, bpp, dtcode] = class2niftiMeta(class(data));
-    infoOut.Datatype = dtype;
+    % ---- Datatype/BitsPerPixel must match class(data) ----
+    [dtype, bpp] = class2niftiMeta(class(data));
+    infoOut.Datatype     = dtype;
     infoOut.BitsPerPixel = bpp;
-
-    if ~isfield(infoOut, "Raw")
-        infoOut.Raw = struct();
-    end
-    if ~isfield(infoOut.Raw, "dim")
-        infoOut.Raw.dim = ones(1,8);
-    end
-    if ~isfield(infoOut.Raw, "pixdim")
-        infoOut.Raw.pixdim = ones(1,8);
-    end
-
-    infoOut.Raw.dim(:) = 1;
-    infoOut.Raw.dim(1) = nDims;
-    infoOut.Raw.dim(2:1+numel(sz)) = sz;
-
-    infoOut.Raw.pixdim(:) = 1;
-    if isfield(infoOut, "PixelDimensions") && ~isempty(infoOut.PixelDimensions)
-        infoOut.Raw.pixdim(2:1+numel(infoOut.PixelDimensions)) = infoOut.PixelDimensions;
-    end
-
-    infoOut.Raw.datatype = dtcode;
-    infoOut.Raw.bitpix = bpp;
-
+    infoOut.Description = '';
     isgz = endsWith(string(pathStr), ".nii.gz");
     pool = [];
     if exist("gcp", "file") == 2

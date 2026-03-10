@@ -1,4 +1,4 @@
-function surf = gradient(inten, windowSize=5, kernelSize=5)
+function surf = gradient(inten, windowSize, kernelSize)
 %GRADIENT Gradient-based surface finding method.
 %   
 %   surf = psoct.surface.gradient(inten, windowSize=5, kernelSize=5)
@@ -9,7 +9,11 @@ function surf = gradient(inten, windowSize=5, kernelSize=5)
 %   NAME-VALUE (optional):
 %   "windowSize" : scalar, window size for gradient calculation (default 5).
 %   "kernelSize" : scalar, kernel size for gradient calculation (default 5).
-
+    arguments
+        inten (:,:,:) {mustBeNumeric, mustBeNonempty}
+        windowSize (1,1) double {mustBeInteger, mustBePositive} = 5
+        kernelSize (1,1) double {mustBeInteger, mustBePositive} = 5
+    end
     [nx, ny, nz] = size(inten);
 
     w  = windowSize;

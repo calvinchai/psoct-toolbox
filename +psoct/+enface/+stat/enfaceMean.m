@@ -26,6 +26,6 @@ function enfaceMap = enfaceMean(vol, surfaceMap, enfaceOffset, enfaceDepth)
 %   -----
 %   NaN values within the axial window are ignored when computing the mean.
 
-enfaceMap = enfaceReduce( ...
+enfaceMap = psoct.enface.stat.enfaceReduce( ...
     vol, @(vals) mean(vals, 'omitnan'), surfaceMap, enfaceOffset, enfaceDepth);
 end

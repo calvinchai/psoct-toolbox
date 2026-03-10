@@ -4,7 +4,7 @@ function p = getDataFile(filename)
     end
 
     pkgFolder = fileparts(mfilename('fullpath'));
-    p = fullfile(pkgFolder, "data", filename);
+    p = fullfile(pkgFolder, "../data", filename);
 
     if ~isfile(p)
         error("Data file not found: %s", p);

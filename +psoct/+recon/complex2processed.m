@@ -46,25 +46,30 @@ function out = complex2processed(J1, J2, surfaceOpts, enfaceOpts, acquisitionOpt
     end
 
     % -------- Resolve output paths into a struct --------
-    if isfield(outputOpts, "Paths") && isstruct(outputOpts.Paths)
-        paths = outputOpts.Paths;
-    else
-        paths = struct();
-    end
-    
-    % -------- Convert complex stack into PS-OCT metric volumes --------
+    % if isfield(outputOpts, "Paths") && isstruct(outputOpts.Paths)
+    %     paths = outputOpts.Paths;
+    % else
+    %     paths = struct();
+    % end
+    volumeOpts = namedargs2cell(volumeOpts);
+    outputOpts = namedargs2cell(outputOpts);
     [dBI3D_vol, R3D_vol, O3D_vol] = psoct.complex.complex2volumes( ...
-        J1, J2, volumeOpts, outputOpts);
-    inten = dBI3D_vol;
-    [~, ~, nz] = size(dBI3D_vol);
+        J1, J2, volumeOpts{:}, outputOpts{:});
+    % % -------- Convert complex stack into PS-OCT metric volumes --------
+    % [dBI3D_vol, R3D_vol, O3D_vol] = psoct.complex.complex2volumes( ...
+    %     J1, J2, volumeOpts, outputOpts);
 
+    [~, ~, nz] = size(dBI3D_vol);
     % -------- Surface and window indices --------
-    surf = psoct.surface.findSurface(inten, surfaceOpts);
+    surfaceOpts = namedargs2cell(surfaceOpts);
+    surf = psoct.surface.findSurface(dBI3D_vol, surfaceOpts{:});
     surf = max(1, min(nz, round(surf)));
 
     % -------- Enface wrapper (compute + write) --------
+    enfaceOpts = namedargs2cell(enfaceOpts);
+    acquisitionOpts = namedargs2cell(acquisitionOpts);
     enfaceOut = psoct.enface.vol2enface( ...
-        dBI3D_vol, R3D_vol, O3D_vol, surf, enfaceOpts, acquisitionOpts, outputOpts);
+        dBI3D_vol, R3D_vol, O3D_vol, surf, enfaceOpts{:}, acquisitionOpts{:}, outputOpts{:});
 
     % -------- Package outputs --------
     out = struct();

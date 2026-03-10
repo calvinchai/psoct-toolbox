@@ -39,7 +39,7 @@ paths = psoct.internal.paths.ensurePathField(paths, "R3D");
 paths = psoct.internal.paths.ensurePathField(paths, "O3D");
 
 infoIn = psoct.internal.nifti.defaultNiftiHeader( ...
-    outputOpts.InfoLike, size(J1), [0.01 0.01 0.025]);
+    size(J1), [0.01 0.01 0.0025], outputOpts.InfoLike);
 writeFutures = {};
 
 % Intensity and dB backscatter
@@ -74,6 +74,7 @@ end
 phi(phi >  pi) = phi(phi >  pi) - 2*pi;
 phi(phi < -pi) = phi(phi < -pi) + 2*pi;
 O3D_vol = (phi / (2*pi)) * 180;
+O3D_vol = single(O3D_vol);
 if flipZ
     O3D_vol = flip(O3D_vol, 3);
 end

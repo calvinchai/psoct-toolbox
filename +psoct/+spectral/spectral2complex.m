@@ -27,13 +27,13 @@ arguments
     spectralOpts.isRawFormat (1,1) logical = false
 end
 
+% spectralOpts = psoct.internal.validator.spectralOpts(spectralOpts);
+
 dispCompFile = string(spectralOpts.dispCompFile);
 AlineSize = spectralOpts.AlineSize;
 BlineSize = spectralOpts.BlineSize;
 outputPath = string(spectralOpts.outputPath);
 isRawFormat = spectralOpts.isRawFormat;
-
-outputPath = string(outputPath);
 
 % Constants describing the acquisition format.
 HEADER_BYTES = 352;          % Header size of Nifti-1 file
@@ -166,8 +166,10 @@ if outputPath ~= ""
         real(Jones2_3D), imag(Jones2_3D));
 
     fprintf('Saving output to: %s\n', outputPath);
-    Jstack_all = flip(Jstack_all, 3);
-    niftiwrite(single(Jstack_all), outputPath);
+    Jstack_all = single(flip(Jstack_all, 3));
+    %psoct.internal.nifti.writeNiftiIfPath(outputPath, Jstack_all, infoIn);
+
+    niftiwrite(Jstack_all, outputPath);
 end
 
 end

@@ -26,7 +26,7 @@ function enfaceMap = enfaceMedian(vol, surfaceMap, enfaceOffset, enfaceDepth)
 %   -----
 %   NaN values within the axial window are ignored when computing the median.
 
-enfaceMap = enfaceReduce( ...
+enfaceMap = psoct.enface.stat.enfaceReduce( ...
     vol, @(vals) median(vals, 'omitnan'), surfaceMap, enfaceOffset, enfaceDepth);
 end
 

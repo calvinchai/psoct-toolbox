@@ -24,7 +24,7 @@ end
 birefMap = zeros(nx, ny, 'single');
 for ix = 1:nx
     for iy = 1:ny
-        z1 = max(1, surfaceMap(ix, iy) + enfaceOffset);
+        z1 = min(nz, max(1, surfaceMap(ix, iy) + enfaceOffset));
         z2 = min(nz, z1 + enfaceDepth);
         if z2 < z1
             z2 = z1;

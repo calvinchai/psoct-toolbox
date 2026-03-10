@@ -94,7 +94,7 @@ end
 paths = psoct.internal.paths.ensurePathField(paths, "surf");
 
 infoIn = psoct.internal.nifti.defaultNiftiHeader( ...
-    outputOpts.InfoLike, size(dBI3D_vol), [0.01 0.01 zSizeUm/1000]);
+    size(dBI3D_vol), [0.01 0.01 zSizeUm/1000], outputOpts.InfoLike);
 info2D = shrinkHeader(infoIn, enfaceOpts.Save2DAs3D, acquisitionOpts.SliceThicknessUm);
 writeOpts = struct("Expand2DTo3D", enfaceOpts.Save2DAs3D);
 
@@ -107,22 +107,25 @@ out.biref = [];
 out.surf = surf;
 writeFutures = {};
 
+writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
+    psoct.internal.nifti.writeNiftiIfPath(paths.surf, out.surf, info2D, "Expand2DTo3D", enfaceOpts.Save2DAs3D));
+
 if compute.aip
     out.aip = psoct.enface.stat.enfaceMean(dBI3D_vol, surf, enfaceOffset, enfaceDepth);
     writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-        psoct.internal.nifti.writeNiftiIfPath(paths.aip, out.aip, info2D, writeOpts));
+        psoct.internal.nifti.writeNiftiIfPath(paths.aip, out.aip, info2D, "Expand2DTo3D", enfaceOpts.Save2DAs3D));
 end
 
 if compute.mip
     out.mip = psoct.enface.stat.enfaceMax(dBI3D_vol, surf, enfaceOffset, enfaceDepth);
     writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-        psoct.internal.nifti.writeNiftiIfPath(paths.mip, out.mip, info2D, writeOpts));
+        psoct.internal.nifti.writeNiftiIfPath(paths.mip, out.mip, info2D, "Expand2DTo3D", enfaceOpts.Save2DAs3D));
 end
 
 if compute.ret
     out.ret = psoct.enface.stat.enfaceMean(R3D_vol, surf, enfaceOffset, enfaceDepth);
     writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-        psoct.internal.nifti.writeNiftiIfPath(paths.ret, out.ret, info2D, writeOpts));
+        psoct.internal.nifti.writeNiftiIfPath(paths.ret, out.ret, info2D, "Expand2DTo3D", enfaceOpts.Save2DAs3D));
 end
 
 if compute.ori
@@ -132,7 +135,7 @@ if compute.ori
         out.ori = psoct.enface.stat.enfaceMean(O3D_vol, surf, enfaceOffset, enfaceDepth);
     end
     writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-        psoct.internal.nifti.writeNiftiIfPath(paths.ori, out.ori, info2D, writeOpts));
+        psoct.internal.nifti.writeNiftiIfPath(paths.ori, out.ori, info2D, "Expand2DTo3D", enfaceOpts.Save2DAs3D));
 end
 
 if compute.biref
@@ -161,11 +164,9 @@ if compute.biref
                 "Unknown birefMethod ""%s"".", birefMethod);
     end
     writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-        psoct.internal.nifti.writeNiftiIfPath(paths.biref, out.biref, info2D, writeOpts));
+        psoct.internal.nifti.writeNiftiIfPath(paths.biref, out.biref, info2D, "Expand2DTo3D", enfaceOpts.Save2DAs3D));
 end
 
-writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-    psoct.internal.nifti.writeNiftiIfPath(paths.surf, out.surf, info2D, writeOpts));
 
 psoct.internal.nifti.waitWriteFutures(writeFutures);
 
