@@ -1,6 +1,6 @@
-function out = thruplane_reg_optiz_tensor_XY_final_par( ...
+function out = thruplane_registration( ...
     fixed_bi1, moving_bi1, fixed_o1, moving_o1, gamma, outputOpts)
-% THRUPLANE_REG_OPTIZ_TENSOR_XY_FINAL_PAR Register orientation/biref maps.
+% THRUPLANE_REGISTRATION Register orientation/biref maps.
 % Compute registration and 3D-axis estimation outputs in memory, and
 % optionally write selected artifacts to disk.
 
@@ -10,11 +10,12 @@ arguments
     fixed_o1 (:,:) {mustBeNumeric, mustBeNonempty}
     moving_o1 (:,:) {mustBeNumeric, mustBeNonempty}
     gamma (1,1) double = -15
-    outputOpts.Paths struct = struct()
+    outputOpts struct = struct()
 end
 
-pathFields = ["inplaneTiff", "inplaneJpg", "alphaTiff", "alphaJpg", "dataMat"];
-paths = normalizePathFields(outputOpts.Paths, pathFields);
+outputOpts = psoct.internal.opts.normalizeOutputOpts(outputOpts);
+paths = outputOpts.Paths;
+infoIn = outputOpts.InfoLike;
 
 fixed_bi1(fixed_bi1 < 0) = 1e-9;
 moving_bi1(moving_bi1 < 0) = 1e-9;

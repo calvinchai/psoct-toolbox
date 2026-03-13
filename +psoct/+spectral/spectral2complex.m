@@ -169,6 +169,7 @@ if outputPath ~= ""
 
     fprintf('Saving output to: %s\n', outputPath);
     Jstack_all = single(flip(Jstack_all, 3));
+    futures = {};
     futures = psoct.internal.nifti.appendWriteFuture(futures, ...
         psoct.internal.nifti.writeNiftiIfPath(outputPath, Jstack_all, outputOpts.InfoLike));
     psoct.internal.nifti.waitWriteFutures(futures);

@@ -1,39 +1,66 @@
-function [J1, J2, outPath] = spectral2complex(spectralFile, spectralOpts)
-% psoct.file.spectral2complex
-% Path-based wrapper around psoct.spectral.spectral2complex.
+function [Jones1_3D, Jones2_3D] = spectral2complex(spectralFile, spectralOpts, outputOpts, optsMatFile)
+%SPECTRAL2COMPLEX Wrapper around psoct.spectral.spectral2complex using an Opts .mat file.
 %
-%   [J1, J2, outPath] = psoct.file.spectral2complex(spectralFile, spectralOpts)
+%   [Jones1_3D, Jones2_3D] = psoct.file.spectral2complex( ...
+%       spectralFile, spectralOpts, outputOpts, optsMatFile)
 %
-% Required
-%   spectralFile       : Path to the spectral data file.
+%   This is a convenience wrapper around psoct.spectral.spectral2complex
+%   that:
+%     - Loads default options from an Opts .mat file (expected variables
+%       `spectralOpts` and `outputOpts`).
+%     - Merges the loaded options with the function arguments so that
+%       fields from the function arguments overwrite fields from the file.
+%     - Optionally uses a NIfTI header from the spectral input as the
+%       output template (InfoLike) when not otherwise specified.
 %
-% spectralOpts struct fields (all optional)
-%   dispCompFile       : Path to dispersion compensation file. If empty,
-%                        uses toolbox default via psoct.internal.getDataFile.
-%   AlineSize          : A-line size (pixels of X axis). Default = 200.
-%   BlineSize          : B-line size (pixels of Y axis). Default = 350.
-%   isRawFormat        : Logical flag indicating packed 12-bit raw format.
-%                        Default = false.
-%   outputPath         : If non-empty, write complex NIfTI to this path.
-%                        If empty, no file is written.
+%   Input
+%     spectralFile : Path to the spectral data file. This may be a raw
+%                    spectral file or a NIfTI file.
+%     spectralOpts : Struct whose fields override those loaded from the
+%                    Opts file variable `spectralOpts`. Can be empty.
+%     outputOpts   : Struct whose fields override those loaded from the
+%                    Opts file variable `outputOpts`. Can be empty.
+%     optsMatFile  : Path to a .mat file containing variables named
+%                    `spectralOpts` and `outputOpts`.
 %
-% Output
-%   J1, J2             : Complex Jones volumes (X × Y × Z).
-%   outPath            : Resolved output path as string ("" if not written).
+%   NIfTI InfoLike behavior
+%     After merging output options from the file and function arguments:
+%       - If mergedOutputOpts.InfoLike is non-empty, it is used as-is.
+%       - Otherwise, if spectralFile is a NIfTI file (.nii or .nii.gz),
+%         niftiinfo(spectralFile) is used as mergedOutputOpts.InfoLike.
+%       - Otherwise, InfoLike is left empty and downstream defaults apply.
 
 arguments
     spectralFile {mustBeTextScalar, mustBeNonempty}
-    spectralOpts.dispCompFile {mustBeTextScalar} = psoct.internal.getDataFile("LSM03_mineral_oil_placecorrectionmeanall2.dat")
-    spectralOpts.AlineSize (1,1) integer {mustBePositive} = 200
-    spectralOpts.BlineSize (1,1) integer {mustBePositive} = 350
-    spectralOpts.outputPath {mustBeTextScalar} = ""
-    spectralOpts.isRawFormat (1,1) logical = false
+    spectralOpts struct = struct()
+    outputOpts struct = struct()
+    optsMatFile {mustBeTextScalar} = ""
 end
 
-spectralFile = string(spectralFile);
-spectralOpts.dispCompFile = string(spectralOpts.dispCompFile);
-spectralOpts.outputPath = string(spectralOpts.outputPath);
+optsMatFile = string(optsMatFile);
+if optsMatFile == ""
+    fileSpectralOpts = struct();
+    fileOutputOpts   = struct();
+else
+    loadedOpts = psoct.internal.opts.loadOptsWithDefaults( ...
+        optsMatFile, ["spectralOpts", "outputOpts"], "psoct:file:spectral2complex");
+    fileSpectralOpts = loadedOpts.spectralOpts;
+    fileOutputOpts   = loadedOpts.outputOpts;
+end
 
-[J1, J2] = psoct.spectral.spectral2complex(spectralFile, spectralOpts);
-outPath = string(spectralOpts.outputPath);
+mergedSpectralOpts = psoct.internal.opts.mergeStructs(fileSpectralOpts, spectralOpts);
+mergedOutputOpts   = psoct.internal.opts.mergeStructs(fileOutputOpts,  outputOpts);
+
+isNiftiInput = psoct.internal.nifti.isNiftiPath(spectralFile);
+hasInfoLikeField = isfield(mergedOutputOpts, 'InfoLike');
+infoLikeEmpty = (~hasInfoLikeField) || isempty(mergedOutputOpts.InfoLike);
+
+if infoLikeEmpty && isNiftiInput
+    infoLike = niftiinfo(spectralFile);
+    mergedOutputOpts.InfoLike = infoLike;
+end
+
+[Jones1_3D, Jones2_3D] = psoct.spectral.spectral2complex( ...
+    spectralFile, mergedSpectralOpts, mergedOutputOpts);
+
 end

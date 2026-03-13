@@ -50,10 +50,16 @@ function infoLike = shrinkNiftiHeader(V, infoIn, pixelDimensions, enfaceVolumeOp
         end
         return;
     end
+    if ~enfaceVolumeOpts.Expand2DTo3D
+        infoLike.ImageSize = [fullSize(1:2)];
+        infoLike.PixelDimensions = [pixelDimensions(1:2)];
+        return;
+    end
 
     % 2D case
     infoLike.ImageSize = [fullSize(1:2), 1];
-    infoLike.PixelDimensions = pixelDimensions(1:2);
+    infoLike.PixelDimensions = [pixelDimensions(1:2), enfaceVolumeOpts.SliceThicknessUm/1000];
+    infoLike.SpatialDimension = 3;
     if enfaceVolumeOpts.channelDimension
         infoLike.ImageSize(4) = fullSize(3);
         infoLike.PixelDimensions(4) = 1;

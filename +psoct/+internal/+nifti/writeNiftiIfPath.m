@@ -17,21 +17,21 @@ function future = writeNiftiIfPath(pathStr, data, infoLike)
     infoOut = infoLike;
     % Dimension fixups
     sz    = size(data);
-    nDims = ndims(data);
-    infoOut.ImageSize = sz;
-    % PixelDimensions length must match dims
-    if isfield(infoOut, 'PixelDimensions')
-        pd = infoOut.PixelDimensions;
-        if numel(pd) < nDims, pd(end+1:nDims) = 1; end
-        if numel(pd) > nDims, pd = pd(1:nDims); end
-        infoOut.PixelDimensions = pd;
-    end
-    % ---- Datatype/BitsPerPixel must match class(data) ----
-    [dtype, bpp] = class2niftiMeta(class(data));
-    infoOut.Datatype     = dtype;
-    infoOut.BitsPerPixel = bpp;
-    infoOut.Description = '';
-    infoOut.Version = 'NIfTI1';
+    % nDims = ndims(data);
+    % infoOut.ImageSize = sz;
+    % % PixelDimensions length must match dims
+    % if isfield(infoOut, 'PixelDimensions')
+    %     pd = infoOut.PixelDimensions;
+    %     if numel(pd) < nDims, pd(end+1:nDims) = 1; end
+    %     if numel(pd) > nDims, pd = pd(1:nDims); end
+    %     infoOut.PixelDimensions = pd;
+    % end
+    % % ---- Datatype/BitsPerPixel must match class(data) ----
+    % [dtype, bpp] = class2niftiMeta(class(data));
+    % infoOut.Datatype     = dtype;
+    % infoOut.BitsPerPixel = bpp;
+    % infoOut.Description = '';
+    % infoOut.Version = 'NIfTI1';
 
     pool = [];
     if exist("gcp", "file") == 2
