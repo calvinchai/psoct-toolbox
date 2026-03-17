@@ -1,5 +1,5 @@
 function out = thruplane_registration( ...
-    fixed_bi1, moving_bi1, fixed_o1, moving_o1, gamma, outputOpts)
+    fixed_bi1, moving_bi1, fixed_o1, moving_o1, gamma, mask)
 % THRUPLANE_REGISTRATION Register orientation/biref maps.
 % Compute registration and 3D-axis estimation outputs in memory, and
 % optionally write selected artifacts to disk.
@@ -10,12 +10,9 @@ arguments
     fixed_o1 (:,:) {mustBeNumeric, mustBeNonempty}
     moving_o1 (:,:) {mustBeNumeric, mustBeNonempty}
     gamma (1,1) double = -15
-    outputOpts struct = struct()
+    mask (:,:) = []
 end
 
-outputOpts = psoct.internal.opts.normalizeOutputOpts(outputOpts);
-paths = outputOpts.Paths;
-infoIn = outputOpts.InfoLike;
 
 fixed_bi1(fixed_bi1 < 0) = 1e-9;
 moving_bi1(moving_bi1 < 0) = 1e-9;
@@ -74,11 +71,30 @@ dneff_x = movingReg_bi1;
 nRows = size(dneff_n, 1);
 progressStep = max(1, floor(nRows / 100));
 
+if isempty(mask)
+    useMask = false;
+else
+    if ~isequal(size(mask), size(dneff_n))
+        error("thruplane_registration:maskSizeMismatch", ...
+            "mask must have the same size as fixed_bi1 (expected %s, got %s).", ...
+            mat2str(size(dneff_n)), mat2str(size(mask)));
+    end
+    useMask = true;
+    mask = (mask ~= 0);
+end
+
+biref_ObsLSQ = NaN(size(dneff_n));
+Psi_ObsLSQ = NaN(size(dneff_n));
+Theta_ObsLSQ = NaN(size(dneff_n));
+
 for ii = 1:nRows
     if mod(ii, progressStep) == 0 || ii == 1 || ii == nRows
         fprintf('\rRow=%d/%d (%.1f%%)', ii, nRows, 100 * ii / nRows);
     end
     parfor jj = 1:size(dneff_n, 2)
+        if useMask && ~mask(ii, jj)
+            continue;
+        end
         r_initial = [0;0;0];
         if abs(phi_n(ii,jj)) < pi/4
             r1loc = squeeze(cat(3, cos(phi_n(ii,jj)), sin(phi_n(ii,jj)), 0) .* dneff_n(ii,jj));
@@ -135,16 +151,7 @@ HMap(:,:,1) = imgOA1;
 HMap(:,:,3) = imgR1;
 alphaRgb = hsv2rgb(HMap);
 
-writeImageIfPath(paths.inplaneTiff, inplaneRgb, 'compression', 'none');
-writeImageIfPath(paths.inplaneJpg, inplaneRgb);
-writeImageIfPath(paths.alphaTiff, alphaRgb, 'compression', 'none');
-writeImageIfPath(paths.alphaJpg, alphaRgb);
 
-if strlength(paths.dataMat) > 0
-    save(convertStringsToChars(paths.dataMat), ...
-        'dneff_n', 'dneff_x', 'phi_n', 'phi_x', 'psi', ...
-        'Psi_ObsLSQ', 'Theta_ObsLSQ', 'biref_ObsLSQ');
-end
 
 out = struct();
 out.dneff_n = dneff_n;
@@ -158,8 +165,6 @@ out.biref_ObsLSQ = biref_ObsLSQ;
 out.alpha = alpha;
 out.inplaneRgb = inplaneRgb;
 out.alphaRgb = alphaRgb;
-out.paths = paths;
-fprintf('\n');
 end
 
 function writeImageIfPath(pathValue, img, varargin)

@@ -1,145 +1,286 @@
-
-function thruplane(basename, gamma, slice_numbers, mask_file, mask_threshold)
-%gamma = -10
-arguments
-        basename 
-        gamma = -15
-        slice_numbers {mustBeInteger, mustBeNonnegative} = [1]
-        mask_file = ""
-        mask_threshold = 55
-end
-nWorkers = 24;
-pool = gcp('nocreate');
-    if isempty(pool)
-        if isempty(nWorkers)
-            pool = parpool; 
-        else
-            pool = parpool(nWorkers);
-        end
-    else
-        fprintf('Using existing parallel pool with %d workers.\n', pool.NumWorkers);
-    end
-
-basename1 = basename;
-basename2 = basename1;
-
-for slice = slice_numbers
-    % % read first set
-    slice_id1 = slice*2-1;
-    slice_id2 = slice*2;
-    
-    fixed1 = imread([basename1, 'mosaic_',sprintf('%03d',slice_id1),'_ori.tif']); % orientation fixed
-    moving1 = imread([basename2, 'mosaic_',sprintf('%03d',slice_id2),'_ori.tif']);  % orientation moving
-    
-    fixed2 = imread([basename1,'mosaic_',sprintf('%03d',slice_id1),'_biref.tif']);
-    moving2 = imread([basename2, 'mosaic_',sprintf('%03d',slice_id2),'_biref.tif']);
-
-
-    switch lower(string(mask_file))
-        case "aip"
-            mask_postfix = '_aip.tif';
-        case "mip"
-            mask_postfix = '_mip.tif';
-        otherwise
-            mask_postfix = ""; % no mask
-    end
-
-    if mask_postfix ~= ""
-        % read mask images for fixed and moving (same slice indices)
-        mask1_img = imread([basename1, 'mosaic_', sprintf('%03d', slice_id1), mask_postfix]);
-        mask2_img = imread([basename2, 'mosaic_', sprintf('%03d', slice_id2), mask_postfix]);
-        mask1_img = imgaussfilt(mask1_img, 5);
-        mask2_img = imgaussfilt(mask2_img, 5);
-        % create logical masks using provided threshold
-        mask1 = mask1_img > mask_threshold;
-        mask2 = mask2_img > mask_threshold;
-
-        % --- apply mask directly (same dimensions) ---
-        fixed1  = fixed1  .* cast(mask1,  class(fixed1));
-        fixed2  = fixed2  .* cast(mask1,  class(fixed2));
-        moving1 = moving1 .* cast(mask2,  class(moving1));
-        moving2 = moving2 .* cast(mask2,  class(moving2));
-    else
-        % no mask requested: leave images unchanged
-    end
-
-    % TODO: the following is used for exp3. We can remove them after
-    % fixed1 = fixed1(:,1:1111);
-    % fixed2 = fixed2(:,1:1111);
-    fixed2 = imgaussfilt(fixed2,3);
-    moving2 = imgaussfilt(moving2,3);
-    
-    clear moving1_temp moving2_temp
-    f1_dims = size(fixed1);
-    m1_dims = size(moving1);
-    
-%     aip1 = imread([basename1, 'mosaic_', sprintf('%03d', slice_id1), '_aip.tif']);
-% aip2 = imread([basename2, 'mosaic_', sprintf('%03d', slice_id2), '_aip.tif']);
-% 
-% mask1 = aip1 > 60;
-% mask2 = aip2 > 60;
-% applyMask = @(img, m) ...
-%     (ndims(img)==3) .* bsxfun(@times, img, cast(repmat(m,[1 1 size(img,3)]), class(img))) + ...
-%     (ndims(img)~=3) .* (img .* cast(m, class(img)));
-% 
-% % --- apply masks ---
-% fixed1  = applyMask(fixed1,  mask1);
-% fixed2  = applyMask(fixed2,  mask1);   % same mask as fixed1 (same basename/slice)
-% moving1 = applyMask(moving1, mask2);
-% moving2 = applyMask(moving2, mask2);
-    
-%     f1_xrange1 = 1;             
-%     f1_xrange2 = end; 
-% 
-%     f1_yrange1 = 1;                  
-%     f1_yrange2 = end; 
-% 
-% 
-%     m1_xrange1 = 1;          
-%     m1_xrange2 = end; 
-% 
-%     m1_yrange1 = 1;        
-%     m1_yrange2 = end; 
-% 
-%     fixed_o1 =  -fixed1(f1_xrange1:f1_xrange2,f1_yrange1:f1_yrange2);
-%     fixed_bi1 =  fixed2(f1_xrange1:f1_xrange2,f1_yrange1:f1_yrange2);
-% %
-%     moving_o1 = -moving1(m1_xrange1:m1_xrange2,m1_yrange1:m1_yrange2);
-%     moving_bi1 = moving2(m1_xrange1:m1_xrange2,m1_yrange1:m1_yrange2);
-
-    fixed_o1 =  -fixed1;
-    fixed_bi1 =  fixed2;
+function out = thruplane( ...
+    fixed_orientation, moving_orientation, ...
+    fixed_birefringence, moving_birefringence, ...
+    fixed_mask, moving_mask, ...
+    fixed_mask_threshold, moving_mask_threshold, ...
+    crop_rect, gamma, outputOpts)
+% THRUPLANE Single-slice thru-plane registration wrapper.
+%   out = THRUPLANE(fixed_orientation, moving_orientation, ...
+%                   fixed_birefringence, moving_birefringence, ...
+%                   fixed_mask, moving_mask, ...
+%                   fixed_mask_threshold, moving_mask_threshold, ...
+%                   crop_rect, gamma, outputOpts)
 %
-    moving_o1 = -moving1;
-    moving_bi1 = moving2;
-    moving_bi1(~isfinite(moving_bi1)) = 1e-9;
-    fixed_bi1(~isfinite(fixed_bi1)) = 1e-9;
+%   This function wraps thru-plane registration for a single 2D slice.
+%   It accepts four image files (fixed/moving orientation and
+%   birefringence), optional masks for fixed and moving images, and an
+%   optional crop region. Inputs may be TIFF (`.tif`/`.tiff`) or NIfTI
+%   (`.nii`/`.nii.gz`); for 3D NIfTI volumes, the first slice is used.
+%
+%   Masks (if provided) are smoothed and thresholded, applied to the input
+%   images, and then re-applied to the registration outputs so that masked
+%   pixels remain suppressed. If a crop is provided, registration is run on
+%   the cropped region and the outputs are padded back to the original
+%   fixed-image size.
+%
+%   Inputs
+%   ------
+%   fixed_orientation        Path to fixed orientation image (TIFF or NIfTI).
+%   moving_orientation       Path to moving orientation image (TIFF or NIfTI).
+%   fixed_birefringence      Path to fixed birefringence image (TIFF or NIfTI).
+%   moving_birefringence     Path to moving birefringence image (TIFF or NIfTI).
+%   fixed_mask               (Optional) Path to fixed mask image; "" to skip.
+%   moving_mask              (Optional) Path to moving mask image; "" to skip.
+%   fixed_mask_threshold     Threshold applied to smoothed fixed_mask (default 55).
+%   moving_mask_threshold    Threshold applied to smoothed moving_mask (default 55).
+%   crop_rect                (Optional) [r1 r2 c1 c2] crop in fixed-image coords;
+%                            [] means no cropping.
+%   gamma                    Source/receiver angle in degrees (default -15).
+%   outputOpts               Struct with output options; passed through
+%                            psoct.internal.opts.normalizeOutputOpts.
+%
+%   Outputs
+%   -------
+%   out.paths                Struct of resolved output paths.
+%   out.registration         Struct returned from thruplane_registration,
+%                            after mask re-application and optional padding.
 
-    
-    %   figure, subplot(1,2,1);imagesc(fixed_bi1);subplot(1,2,2);imagesc(moving_bi1)
-
-%     fixed_o1 = imresize (fixed_o1, [size(fixed_bi1,1) size(fixed_bi1,2)],'nearest');
-%     moving_o1 = imresize (moving_o1, [size(moving_bi1,1) size(moving_bi1,2)],'nearest');
-    
-
-
-
-
-    outputPrefix = string([basename 'par_slice' num2str(slice)]);
-    regPaths = struct();
-    regPaths.inplaneTiff = outputPrefix + "_inplane.tiff";
-    regPaths.inplaneJpg = outputPrefix + "_inplane.jpg";
-    regPaths.alphaTiff = outputPrefix + "_alpha.tiff";
-    regPaths.alphaJpg = outputPrefix + "_alpha.jpg";
-    regPaths.dataMat = outputPrefix + "_data.mat";
-    regOutputOpts = struct("Paths", regPaths);
-    psoct.registration.thruplane_reg_optiz_tensor_XY_final_par( ...
-        fixed_bi1, moving_bi1, fixed_o1, moving_o1, gamma, regOutputOpts);
-
-clear fixed_bi1 moving_bi1 fixed_o1 moving_o1
-% delete(poolobj)
+arguments
+    fixed_orientation
+    moving_orientation
+    fixed_birefringence
+    moving_birefringence
+    fixed_mask = ""
+    moving_mask = ""
+    fixed_mask_threshold double = 55
+    moving_mask_threshold double = 55
+    crop_rect = []
+    gamma double = -15
+    outputOpts struct = struct()
 end
 
-% rest is done in thruplane_reg_optiz_tensor_XY_final_par_JW
+outputOpts = psoct.internal.opts.normalizeOutputOpts(outputOpts);
+paths = outputOpts.Paths;
 
+% Ensure parallel pool exists for downstream parfor usage.
+nWorkers = 24;
+pool = gcp("nocreate");
+if isempty(pool)
+    if isempty(nWorkers)
+        parpool;
+    else
+        parpool(nWorkers);
+    end
+else
+    fprintf("Using existing parallel pool with %d workers.\n", pool.NumWorkers);
+end
+
+% Load orientation/birefringence images (TIFF or NIfTI).
+fixed_ori_img = loadImage2D(fixed_orientation, "fixed orientation");
+moving_ori_img = loadImage2D(moving_orientation, "moving orientation");
+fixed_bi_img = loadImage2D(fixed_birefringence, "fixed birefringence");
+moving_bi_img = loadImage2D(moving_birefringence, "moving birefringence");
+
+% Load masks if provided.
+has_fixed_mask = ~(strlength(string(fixed_mask)) == 0);
+has_moving_mask = ~(strlength(string(moving_mask)) == 0);
+fixed_mask_img = [];
+moving_mask_img = [];
+
+if has_fixed_mask
+    fixed_mask_img = loadImage2D(fixed_mask, "fixed mask");
+end
+if has_moving_mask
+    moving_mask_img = loadImage2D(moving_mask, "moving mask");
+end
+
+% Apply masks to inputs (after smoothing/thresholding).
+if has_fixed_mask
+    fixed_mask_smooth = imgaussfilt(fixed_mask_img, 5);
+    fixed_mask_logical = fixed_mask_smooth > fixed_mask_threshold;
+    fixed_ori_img = fixed_ori_img .* double(fixed_mask_logical);
+    fixed_bi_img = fixed_bi_img .* double(fixed_mask_logical);
+else
+    fixed_mask_logical = [];
+end
+
+if has_moving_mask
+    moving_mask_smooth = imgaussfilt(moving_mask_img, 5);
+    moving_mask_logical = moving_mask_smooth > moving_mask_threshold;
+    moving_ori_img = moving_ori_img .* double(moving_mask_logical);
+    moving_bi_img = moving_bi_img .* double(moving_mask_logical);
+else
+    moving_mask_logical = [];
+end
+
+% Record original size and optionally crop.
+szFixed = size(fixed_ori_img);
+rows = [];
+cols = [];
+if ~isempty(crop_rect)
+    if numel(crop_rect) ~= 4
+        error("crop_rect must be [] or a 4-element vector [r1 r2 c1 c2].");
+    end
+    r1 = crop_rect(1);
+    r2 = crop_rect(2);
+    c1 = crop_rect(3);
+    c2 = crop_rect(4);
+    rows = r1:r2;
+    cols = c1:c2;
+    fixed_ori_img = fixed_ori_img(rows, cols);
+    fixed_bi_img = fixed_bi_img(rows, cols);
+    moving_ori_img = moving_ori_img(rows, cols);
+    moving_bi_img = moving_bi_img(rows, cols);
+    if ~isempty(fixed_mask_logical)
+        fixed_mask_logical = fixed_mask_logical(rows, cols);
+    end
+    if ~isempty(moving_mask_logical)
+        moving_mask_logical = moving_mask_logical(rows, cols);
+    end
+end
+
+% Pre-processing for registration.
+fixed_bi_img = imgaussfilt(fixed_bi_img, 3);
+moving_bi_img = imgaussfilt(moving_bi_img, 3);
+
+fixed_o1 = -double(fixed_ori_img);
+moving_o1 = -double(moving_ori_img);
+fixed_bi1 = double(fixed_bi_img);
+moving_bi1 = double(moving_bi_img);
+
+fixed_bi1(~isfinite(fixed_bi1)) = 1e-9;
+moving_bi1(~isfinite(moving_bi1)) = 1e-9;
+
+% Run thruplane registration backend (pass fixed mask logical as mask).
+if isempty(fixed_mask_logical)
+    maskForReg = [];
+else
+    maskForReg = fixed_mask_logical;
+end
+regOut = psoct.registration.thruplane_registration( ...
+    fixed_bi1, moving_bi1, fixed_o1, moving_o1, gamma, maskForReg, struct());
+
+% Re-apply fixed mask to registration outputs (on cropped grid).
+if ~isempty(fixed_mask_logical)
+    regOut = applyMaskToRegOut(regOut, fixed_mask_logical);
+end
+
+% Pad results back to original size if cropping was used.
+if ~isempty(crop_rect)
+    regOut = padRegOutToSize(regOut, szFixed, rows, cols);
+end
+
+% Write outputs if paths are provided.
+writeImageIfPath(paths.inplaneTiff, regOut.inplaneRgb, "compression", "none");
+writeImageIfPath(paths.inplaneJpg, regOut.inplaneRgb);
+writeImageIfPath(paths.alphaTiff, regOut.alphaRgb, "compression", "none");
+writeImageIfPath(paths.alphaJpg, regOut.alphaRgb);
+
+if strlength(paths.dataMat) > 0
+    save(convertStringsToChars(paths.dataMat), ...
+        "dneff_n", "dneff_x", "phi_n", "phi_x", "psi", ...
+        "Psi_ObsLSQ", "Theta_ObsLSQ", "biref_ObsLSQ");
+end
+
+out = struct();
+out.paths = paths;
+out.registration = regOut;
+
+end
+
+function img = loadImage2D(pathValue, label)
+pathStr = string(pathValue);
+if strlength(pathStr) == 0
+    error("Path for %s is empty.", label);
+end
+[~, ~, ext] = fileparts(pathStr);
+ext = lower(ext);
+if ext == ".nii" || ext == ".gz"
+    img = niftiread(pathStr);
+    if ndims(img) == 3
+        img = img(:,:,1);
+        fprintf("Extracted first slice from %s (3D -> 2D)\n", label);
+    end
+else
+    img = imread(pathStr);
+end
+img = double(img);
+end
+
+function regOut = applyMaskToRegOut(regOut, mask)
+mask = logical(mask);
+
+if isfield(regOut, "biref_ObsLSQ")
+    regOut.biref_ObsLSQ = regOut.biref_ObsLSQ .* mask;
+end
+if isfield(regOut, "Psi_ObsLSQ")
+    regOut.Psi_ObsLSQ = regOut.Psi_ObsLSQ .* mask;
+end
+if isfield(regOut, "Theta_ObsLSQ")
+    regOut.Theta_ObsLSQ = regOut.Theta_ObsLSQ .* mask;
+end
+if isfield(regOut, "phi_n")
+    regOut.phi_n = regOut.phi_n .* mask;
+end
+if isfield(regOut, "phi_x")
+    regOut.phi_x = regOut.phi_x .* mask;
+end
+if isfield(regOut, "dneff_n")
+    regOut.dneff_n = regOut.dneff_n .* mask;
+end
+if isfield(regOut, "dneff_x")
+    regOut.dneff_x = regOut.dneff_x .* mask;
+end
+if isfield(regOut, "alpha")
+    regOut.alpha = regOut.alpha .* mask;
+end
+
+if isfield(regOut, "inplaneRgb")
+    rgb = regOut.inplaneRgb;
+    if ndims(rgb) == 3
+        regOut.inplaneRgb = rgb .* repmat(mask, [1 1 size(rgb, 3)]);
+    else
+        regOut.inplaneRgb = rgb .* mask;
+    end
+end
+if isfield(regOut, "alphaRgb")
+    rgb = regOut.alphaRgb;
+    if ndims(rgb) == 3
+        regOut.alphaRgb = rgb .* repmat(mask, [1 1 size(rgb, 3)]);
+    else
+        regOut.alphaRgb = rgb .* mask;
+    end
+end
+
+end
+
+function regOut = padRegOutToSize(regOut, szFixed, rows, cols)
+rowRange = rows;
+colRange = cols;
+
+fields = fieldnames(regOut);
+for k = 1:numel(fields)
+    name = fields{k};
+    value = regOut.(name);
+    if isempty(value)
+        continue;
+    end
+    if ismatrix(value) && isequal(size(value), [numel(rowRange), numel(colRange)])
+        full = zeros(szFixed, "like", value);
+        full(rowRange, colRange) = value;
+        regOut.(name) = full;
+    elseif ndims(value) == 3 && size(value,1) == numel(rowRange) && size(value,2) == numel(colRange)
+        full = zeros([szFixed, size(value,3)], "like", value);
+        full(rowRange, colRange, :) = value;
+        regOut.(name) = full;
+    end
+end
+end
+
+function writeImageIfPath(pathValue, img, varargin)
+pathValue = string(pathValue);
+if strlength(pathValue) == 0
+    return;
+end
+imwrite(img, convertStringsToChars(pathValue), varargin{:});
 end
