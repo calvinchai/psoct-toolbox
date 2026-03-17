@@ -1,4 +1,4 @@
-function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(J1, J2, volumeOpts, outputOpts)
+function [dBI3D_vol, R3D_vol, O3D_vol] = complex2volumes(J1, J2, volumeOpts, outputOpts, acquisitionOpts)
 % complex2volumes Convert complex Jones volumes into PS-OCT metric volumes.
 %
 % J1 and J2 are complex-valued 3D arrays of size X × Y × Z representing the
@@ -23,10 +23,12 @@ arguments
     J2 (:,:,:) {mustBeNumeric, mustBeNonempty}
     volumeOpts struct = struct()
     outputOpts struct = struct()
+    acquisitionOpts struct = struct()
 end
 
 volumeOpts = psoct.internal.opts.normalizeVolumeOpts(volumeOpts);
 outputOpts = psoct.internal.opts.normalizeOutputOpts(outputOpts);
+acquisitionOpts = psoct.internal.opts.normalizeAcquisitionOpts(acquisitionOpts);
 
 flipPhase = volumeOpts.flipPhase;
 phaseOffset = volumeOpts.phaseOffset;
@@ -43,8 +45,9 @@ dBI3D_vol = 10*log10(max(IJones, eps('single')));
 if flipZ
     dBI3D_vol = flip(dBI3D_vol, 3);
 end
+shrinkedHeader = psoct.internal.nifti.shrinkNiftiHeader(dBI3D_vol, infoIn, acquisitionOpts.PixelDimensionsUm, "Expand2DTo3D", false, "channelDimension", false);
 writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-    psoct.internal.nifti.writeNiftiIfPath(paths.dBI3D, dBI3D_vol, infoIn));
+    psoct.internal.nifti.writeNiftiIfPath(paths.dBI3D, dBI3D_vol, shrinkedHeader));
 
 % Retardance volume (degrees)
 absJ1 = abs(J1);
@@ -55,7 +58,7 @@ if flipZ
     R3D_vol = flip(R3D_vol, 3);
 end
 writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-    psoct.internal.nifti.writeNiftiIfPath(paths.R3D, R3D_vol, infoIn));
+    psoct.internal.nifti.writeNiftiIfPath(paths.R3D, R3D_vol, shrinkedHeader));
 
 phase1 = angle(J1);
 phase2 = angle(J2);
@@ -74,7 +77,7 @@ if flipZ
     O3D_vol = flip(O3D_vol, 3);
 end
 writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-    psoct.internal.nifti.writeNiftiIfPath(paths.O3D, O3D_vol, infoIn));
+    psoct.internal.nifti.writeNiftiIfPath(paths.O3D, O3D_vol, shrinkedHeader));
 psoct.internal.nifti.waitWriteFutures(writeFutures);
 end
 
