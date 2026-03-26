@@ -47,7 +47,7 @@ if flipZ
 end
 shrinkedHeader = psoct.internal.nifti.shrinkNiftiHeader(dBI3D_vol, infoIn, acquisitionOpts.PixelDimensionsUm, "Expand2DTo3D", false, "channelDimension", false);
 writeFutures = psoct.internal.nifti.appendWriteFuture(writeFutures, ...
-    psoct.internal.nifti.writeNiftiIfPath(paths.dBI3D, dBI3D_vol, shrinkedHeader));
+    psoct.internal.nifti.writeNiftiIfPath(paths.dBI, dBI3D_vol, shrinkedHeader));
 
 % Retardance volume (degrees)
 absJ1 = abs(J1);

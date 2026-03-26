@@ -159,6 +159,9 @@ end % for blineIndex
 Jones1_3D = permute(Jones1_3D, [2 1 3]);
 Jones2_3D = permute(Jones2_3D, [2 1 3]);
 
+Jones1_3d = flip(Jones1_3D, 3);
+Jones2_3d = flip(Jones2_3D, 3);
+
 outputPath = outputOpts.Paths.complex;
 if outputPath ~= ""
     % real_J1: Bline x Aline x Depth  -> we'll stack along dim 1,
@@ -168,7 +171,7 @@ if outputPath ~= ""
         real(Jones2_3D), imag(Jones2_3D));
 
     fprintf('Saving output to: %s\n', outputPath);
-    Jstack_all = single(flip(Jstack_all, 3));
+    Jstack_all = single(Jstack_all);
     futures = {};
     futures = psoct.internal.nifti.appendWriteFuture(futures, ...
         psoct.internal.nifti.writeNiftiIfPath(outputPath, Jstack_all, outputOpts.InfoLike));

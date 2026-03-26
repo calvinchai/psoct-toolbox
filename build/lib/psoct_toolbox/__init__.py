@@ -17,7 +17,7 @@ def get_matlab_root() -> Path:
 
     # This resolves to the directory containing this __init__.py file
     pkg_root = Path(resources.files(__package__))
-    return pkg_root / "matlab" 
+    return pkg_root / "matlab" / "+psoct"
 
 
 __all__ = ["get_matlab_root"]

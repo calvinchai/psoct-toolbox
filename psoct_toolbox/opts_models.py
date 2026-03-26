@@ -114,7 +114,7 @@ class OutputPaths(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     complex: Optional[str] = Field(default=None, alias="complex")
-    dBI3D: Optional[str] = Field(default=None, alias="dBI3D")
+    dBI: Optional[str] = Field(default=None, alias="dBI")
     R3D: Optional[str] = Field(default=None, alias="R3D")
     O3D: Optional[str] = Field(default=None, alias="O3D")
     surf: Optional[str] = Field(default=None, alias="surf")
