@@ -158,7 +158,7 @@ else
     maskForReg = fixed_mask_logical;
 end
 regOut = psoct.registration.thruplane_registration( ...
-    fixed_bi1, moving_bi1, fixed_o1, moving_o1, gamma, maskForReg, struct());
+    fixed_bi1, moving_bi1, fixed_o1, moving_o1, gamma, maskForReg);
 
 % Re-apply fixed mask to registration outputs (on cropped grid).
 if ~isempty(fixed_mask_logical)
@@ -176,7 +176,20 @@ writeImageIfPath(paths.inplaneJpg, regOut.inplaneRgb);
 writeImageIfPath(paths.alphaTiff, regOut.alphaRgb, "compression", "none");
 writeImageIfPath(paths.alphaJpg, regOut.alphaRgb);
 
+writeImageIfPath(paths.axisJpg, abs(regOut.oct_vec_3d));
+writeNiftiIfPath(paths.axisNii, regOut.oct_vec_3d);
+writeNiftiIfPath(paths.axisNiiNorm, regOut.oct_vec_3d_norm);
+writeNiftiIfPath(paths.registeredBirefNii, regOut.biref_ObsLSQ);
+
 if strlength(paths.dataMat) > 0
+    dneff_n = regOut.dneff_n;       %#ok<NASGU>
+    dneff_x = regOut.dneff_x;       %#ok<NASGU>
+    phi_n = regOut.phi_n;           %#ok<NASGU>
+    phi_x = regOut.phi_x;           %#ok<NASGU>
+    psi = regOut.psi;               %#ok<NASGU>
+    Psi_ObsLSQ = regOut.Psi_ObsLSQ;         %#ok<NASGU>
+    Theta_ObsLSQ = regOut.Theta_ObsLSQ;     %#ok<NASGU>
+    biref_ObsLSQ = regOut.biref_ObsLSQ;     %#ok<NASGU>
     save(convertStringsToChars(paths.dataMat), ...
         "dneff_n", "dneff_x", "phi_n", "phi_x", "psi", ...
         "Psi_ObsLSQ", "Theta_ObsLSQ", "biref_ObsLSQ");
@@ -209,49 +222,18 @@ end
 
 function regOut = applyMaskToRegOut(regOut, mask)
 mask = logical(mask);
-
-if isfield(regOut, "biref_ObsLSQ")
-    regOut.biref_ObsLSQ = regOut.biref_ObsLSQ .* mask;
-end
-if isfield(regOut, "Psi_ObsLSQ")
-    regOut.Psi_ObsLSQ = regOut.Psi_ObsLSQ .* mask;
-end
-if isfield(regOut, "Theta_ObsLSQ")
-    regOut.Theta_ObsLSQ = regOut.Theta_ObsLSQ .* mask;
-end
-if isfield(regOut, "phi_n")
-    regOut.phi_n = regOut.phi_n .* mask;
-end
-if isfield(regOut, "phi_x")
-    regOut.phi_x = regOut.phi_x .* mask;
-end
-if isfield(regOut, "dneff_n")
-    regOut.dneff_n = regOut.dneff_n .* mask;
-end
-if isfield(regOut, "dneff_x")
-    regOut.dneff_x = regOut.dneff_x .* mask;
-end
-if isfield(regOut, "alpha")
-    regOut.alpha = regOut.alpha .* mask;
-end
-
-if isfield(regOut, "inplaneRgb")
-    rgb = regOut.inplaneRgb;
-    if ndims(rgb) == 3
-        regOut.inplaneRgb = rgb .* repmat(mask, [1 1 size(rgb, 3)]);
-    else
-        regOut.inplaneRgb = rgb .* mask;
+fields = fieldnames(regOut);
+for k = 1:numel(fields)
+    val = regOut.(fields{k});
+    if ~isnumeric(val) || isempty(val)
+        continue;
+    end
+    if ismatrix(val)
+        regOut.(fields{k}) = val .* mask;
+    elseif ndims(val) == 3
+        regOut.(fields{k}) = val .* repmat(mask, [1 1 size(val, 3)]);
     end
 end
-if isfield(regOut, "alphaRgb")
-    rgb = regOut.alphaRgb;
-    if ndims(rgb) == 3
-        regOut.alphaRgb = rgb .* repmat(mask, [1 1 size(rgb, 3)]);
-    else
-        regOut.alphaRgb = rgb .* mask;
-    end
-end
-
 end
 
 function regOut = padRegOutToSize(regOut, szFixed, rows, cols)
@@ -283,4 +265,12 @@ if strlength(pathValue) == 0
     return;
 end
 imwrite(img, convertStringsToChars(pathValue), varargin{:});
+end
+
+function writeNiftiIfPath(pathValue, vol)
+pathValue = string(pathValue);
+if strlength(pathValue) == 0
+    return;
+end
+niftiwrite(vol, convertStringsToChars(pathValue));
 end

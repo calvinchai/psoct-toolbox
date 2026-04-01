@@ -1,8 +1,8 @@
 function out = thruplane_registration( ...
     fixed_bi1, moving_bi1, fixed_o1, moving_o1, gamma, mask)
 % THRUPLANE_REGISTRATION Register orientation/biref maps.
-% Compute registration and 3D-axis estimation outputs in memory, and
-% optionally write selected artifacts to disk.
+% Compute registration, HSV visualizations, and 3D-axis vector field
+% entirely in memory. Returns a struct with all computed arrays.
 
 arguments
     fixed_bi1 (:,:) {mustBeNumeric, mustBeNonempty}
@@ -153,6 +153,17 @@ alphaRgb = hsv2rgb(HMap);
 
 
 
+% 3D-axis vector field from spherical coordinates.
+I_B = (biref_ObsLSQ - prctile(biref_ObsLSQ(:), 1)) / prctile(biref_ObsLSQ(:), 20);
+I_B(I_B > 1) = 1;
+I_B(I_B < 0) = 0;
+[X, Y, Z] = sph2cart(Theta_ObsLSQ, alpha, I_B);
+oct_vec_3d = cat(3, -X, Z, Y);
+
+norm_data = sqrt(sum(oct_vec_3d.^2, 3));
+oct_vec_3d_norm = oct_vec_3d ./ (norm_data + eps);
+oct_vec_3d_norm(~isfinite(oct_vec_3d_norm)) = 0;
+
 out = struct();
 out.dneff_n = dneff_n;
 out.dneff_x = dneff_x;
@@ -165,20 +176,8 @@ out.biref_ObsLSQ = biref_ObsLSQ;
 out.alpha = alpha;
 out.inplaneRgb = inplaneRgb;
 out.alphaRgb = alphaRgb;
-end
-
-function writeImageIfPath(pathValue, img, varargin)
-pathValue = string(pathValue);
-if strlength(pathValue) == 0
-    return;
-end
-imwrite(img, convertStringsToChars(pathValue), varargin{:});
-end
-
-function paths = normalizePathFields(paths, fieldNames)
-for k = 1:numel(fieldNames)
-    paths = psoct.internal.paths.ensurePathField(paths, fieldNames(k));
-end
+out.oct_vec_3d = oct_vec_3d;
+out.oct_vec_3d_norm = oct_vec_3d_norm;
 end
 
 function movingReg_o = warpOrientationAngle(moving_o, t, Rfixed)

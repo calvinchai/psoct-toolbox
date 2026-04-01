@@ -25,7 +25,7 @@ class SpectralOpts(BaseModel):
     def to_matlab_struct(self) -> Dict[str, Any]:
         data = self.model_dump(by_alias=True, exclude_none=True)
         return data
-
+    
 
 class EnfaceComputeFlags(BaseModel):
     """Logical flags for which enface modalities to compute."""
@@ -37,6 +37,7 @@ class EnfaceComputeFlags(BaseModel):
     ret: bool = True
     ori: bool = True
     biref: bool = True
+    mus: bool = False
 
     def to_matlab_struct(self) -> Dict[str, Any]:
         # MATLAB expects a struct with logical fields.
